@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify, render_template, session
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
+import sqlite3, os
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_secret_key")
 
 def conectar_bd():
     conn = sqlite3.connect('alunos.db')
