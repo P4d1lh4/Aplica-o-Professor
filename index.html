@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Alunos</title>
+    <style>
+        /* Estilos gerais */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        /* Estilos para as abas */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tabs button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tabs button:hover {
+            background-color: #0056b3;
+        }
+        .tab-content {
+            display: none;
+            margin-top: 20px;
+            animation: fadeIn 0.3s;
+        }
+        .active {
+            display: block;
+        }
+        /* Animação de suavidade */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        /* Estilos para formulários */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button.action-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button.action-button:hover {
+            background-color: #218838;
+        }
+        .message {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            background-color: #e0f7fa;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sistema de Alunos</h1>
+
+    <div class="container">
+        <div class="tabs">
+            <button onclick="showTab('tab-add')">Adicionar Aluno</button>
+            <button onclick="showTab('tab-edit')">Editar Aluno</button>
+            <button onclick="showTab('tab-search')">Pesquisar Aluno</button>
+            <button onclick="showTab('tab-delete')">Excluir Aluno</button>
+            <button onclick="showTab('tab-create-module')">Criar Módulo</button>
+            <button onclick="showTab('tab-delete-module')">Excluir Módulo</button>
+            <button onclick="showTab('tab-view-modules')">Ver Módulos</button>
+        </div>
+
+        <!-- Tab for Adding Student -->
+        <div id="tab-add" class="tab-content active">
+            <h2>Adicionar Novo Aluno</h2>
+            <div class="form-group">
+                <label for="nomeNovo">Nome do Aluno:</label>
+                <input type="text" id="nomeNovo" placeholder="Digite o nome do aluno">
+            </div>
+            <div class="form-group">
+                <label for="numeroMatriculaNovo">Número Matrícula:</label>
+                <input type="text" id="numeroMatriculaNovo" placeholder="Digite o número da matrícula">
+            </div>
+            <div class="form-group">
+                <label for="dataMatriculaNovo">Data Matrícula:</label>
+                <input type="date" id="dataMatriculaNovo">
+            </div>
+            <div class="form-group">
+                <label for="atestadosNovo">Atestados:</label>
+                <input type="number" id="atestadosNovo" placeholder="Número de atestados">
+            </div>
+            <div class="form-group">
+                <label for="encaminhamentoNovo">Encaminhamento:</label>
+                <input type="text" id="encaminhamentoNovo" placeholder="Digite o encaminhamento">
+            </div>
+            <div class="form-group">
+                <label for="obsNovo">Observações:</label>
+                <textarea id="obsNovo" placeholder="Digite observações adicionais"></textarea>
+            </div>
+            <button onclick="adicionarAluno()" class="action-button">Adicionar Aluno</button>
+            <div id="mensagem" class="message"></div>
+        </div>
+
+        <!-- Tab for Editing Student -->
+        <div id="tab-edit" class="tab-content">
+            <h2>Editar Aluno</h2>
+            <div class="form-group">
+                <label for="numeroMatriculaEditar">Número Matrícula:</label>
+                <input type="text" id="numeroMatriculaEditar" placeholder="Digite o número da matrícula do aluno">
+            </div>
+            <div class="form-group">
+                <label for="nomeEditar">Nome:</label>
+                <input type="text" id="nomeEditar" placeholder="Digite o nome do aluno">
+            </div>
+            <div class="form-group">
+                <label for="dataMatriculaEditar">Data Matrícula:</label>
+                <input type="date" id="dataMatriculaEditar">
+            </div>
+            <div class="form-group">
+                <label for="atestadosEditar">Atestados:</label>
+                <input type="number" id="atestadosEditar" placeholder="Número de atestados">
+            </div>
+            <div class="form-group">
+                <label for="encaminhamentoEditar">Encaminhamento:</label>
+                <input type="text" id="encaminhamentoEditar" placeholder="Digite o encaminhamento">
+            </div>
+            <div class="form-group">
+                <label for="obsEditar">Observações:</label>
+                <textarea id="obsEditar" placeholder="Digite observações adicionais"></textarea>
+            </div>
+            <button onclick="editarAluno()" class="action-button">Editar Aluno</button>
+            <div id="mensagemEditar" class="message"></div>
+        </div>
+
+        <!-- Tab for Searching Student -->
+        <div id="tab-search" class="tab-content">
+            <h2>Pesquisar Aluno</h2>
+            <div class="form-group">
+                <label for="numeroMatriculaPesquisa">Número Matrícula:</label>
+                <input type="text" id="numeroMatriculaPesquisa" placeholder="Digite o número da matrícula (opcional)">
+            </div>
+            <div class="form-group">
+                <label for="nomePesquisa">Nome do Aluno:</label>
+                <input type="text" id="nomePesquisa" placeholder="Digite o nome do aluno (opcional)">
+            </div>
+            <button onclick="pesquisarAluno()" class="action-button">Pesquisar Aluno</button>
+            <div id="resultadoPesquisa" class="message"></div>
+            <div class="search-results">
+                <ul id="listaAlunos"></ul>
+            </div>
+        </div>
+
+        <!-- Tab for Deleting Student -->
+        <div id="tab-delete" class="tab-content">
+            <h2>Excluir Aluno</h2>
+            <div class="form-group">
+                <label for="numeroMatriculaExcluir">Número Matrícula:</label>
+                <input type="text" id="numeroMatriculaExcluir" placeholder="Digite o número da matrícula">
+            </div>
+            <button onclick="excluirAluno()" class="action-button" style="background-color: #dc3545;">Excluir Aluno</button>
+            <div id="mensagemExcluir" class="message"></div>
+        </div>
+
+        <!-- Tab for Creating Module -->
+        <div id="tab-create-module" class="tab-content">
+            <h2>Criar Módulo</h2>
+            <div class="form-group">
+                <label for="nomeModulo">Nome do Módulo:</label>
+                <input type="text" id="nomeModulo" placeholder="Digite o nome do módulo">
+            </div>
+            <button onclick="criarModulo()" class="action-button">Criar Módulo</button>
+            <div id="mensagemModulo" class="message"></div>
+        </div>
+
+        <!-- Tab for Excluding Module by Name -->
+        <div id="tab-delete-module" class="tab-content">
+            <h2>Excluir Módulo</h2>
+            <div class="form-group">
+                <label for="moduleNameExcluir">Nome do Módulo:</label>
+                <input type="text" id="moduleNameExcluir" placeholder="Digite o nome do módulo">
+            </div>
+            <button onclick="excluirModulo()" class="action-button" style="background-color: #dc3545;">Excluir Módulo</button>
+            <div id="mensagemExcluirModulo" class="message"></div>
+        </div>
+
+        <!-- Tab for Viewing Modules and Button to Show Students -->
+        <div id="tab-view-modules" class="tab-content">
+            <h2>Lista de Módulos</h2>
+            <ul id="moduleList" class="module-list"></ul>
+            <div id="mensagemListarModulo" class="message"></div>
+
+            <!-- Section to Display the List of Students in a Module -->
+            <div id="studentListContainer" style="display: none; margin-top: 20px;">
+                <h3>Alunos do Módulo</h3>
+                <ul id="studentList" class="module-list"></ul>
+            </div>
+            
+            <div id="studentDetailsContainer" class="details-container" style="display: none;">
+                <div class="tabs">
+                    <button onclick="showStudentTab('view-info')">Visualizar Informações</button>
+                    <button onclick="showStudentTab('edit-info')">Editar Informações</button>
+                </div>
+                
+                <!-- Tab para Visualizar Informações do Aluno -->
+                <div id="view-info" class="student-tab-content">
+                    <h3>Informações do Aluno</h3>
+                    <p><strong>Nome:</strong> <span id="detalhesNome"></span></p>
+                    <p><strong>Matrícula:</strong> <span id="detalhesMatricula"></span></p>
+                    <p><strong>Faltas:</strong> <span id="detalhesFaltas"></span></p>
+                    <p><strong>Nota do Tutor:</strong> <span id="detalhesNotaTutor"></span></p>
+                    <p><strong>Nota Avaliação Regular:</strong> <span id="detalhesNotaAvaliacaoRegular"></span></p>
+                    <p><strong>Nota Recuperação:</strong> <span id="detalhesNotaRecuperacao"></span></p>
+                    <p><strong>Nota Final:</strong> <span id="detalhesNotaFinal"></span></p>
+                </div>
+            
+                    <!-- Edit Info Tab -->
+                    <div id="edit-info" class="student-tab-content" style="display: none;">
+                        <h3>Editar Informações</h3>
+                        <label>Faltas:</label> <input type="number" id="editFaltas"><br>
+                        <label>Nota do Tutor:</label> <input type="number" id="editNotaTutor"><br>
+                        <label>Nota Avaliação Regular:</label> <input type="number" id="editNotaAvaliacaoRegular"><br>
+                        <label>Nota Recuperação:</label> <input type="number" id="editNotaRecuperacao"><br>
+                        <label>Nota Final:</label> <input type="number" id="editNotaFinal"><br>
+                        <button onclick="salvarEdicao()">Salvar</button>
+                    </div>
+                 
+
+
+    <script>
+    // Função para exibir abas com animação e ativar botões de navegação
+    function showTab(tabId) {
+        const tabs = document.querySelectorAll('.tab-content');
+        const buttons = document.querySelectorAll('.tabs button');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        buttons.forEach(button => button.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+    
+        // Carregar módulos ao visualizar a lista de módulos
+        if (tabId === 'tab-view-modules') {
+            carregarModulos();
+        }
+    }
+    
+    // Função para adicionar aluno
+    function adicionarAluno() {
+        const alunoData = {
+            nome: document.getElementById('nomeNovo').value,
+            numero_matricula: document.getElementById('numeroMatriculaNovo').value,
+            data_matricula: document.getElementById('dataMatriculaNovo').value,
+            atestados: parseInt(document.getElementById('atestadosNovo').value),
+            encaminhamento: document.getElementById('encaminhamentoNovo').value,
+            obs: document.getElementById('obsNovo').value
+        };
+    
+        fetch('/adicionar_aluno', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alunoData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            const mensagem = document.getElementById('mensagem');
+            mensagem.innerText = data.message || data.error;
+            mensagem.style.display = 'block';
+        })
+        .catch(error => {
+            document.getElementById('mensagem').innerText = 'Erro ao adicionar o aluno.';
+            document.getElementById('mensagem').style.display = 'block';
+        });
+    }
+    
+    function editarAluno() {
+        const alunoData = {
+            numero_matricula: document.getElementById('numeroMatriculaEditar').value,
+            nome: document.getElementById('nomeEditar').value,
+            data_matricula: document.getElementById('dataMatriculaEditar').value,
+            atestados: parseInt(document.getElementById('atestadosEditar').value),
+            encaminhamento: document.getElementById('encaminhamentoEditar').value,
+            obs: document.getElementById('obsEditar').value
+        };
+    
+        fetch(`/editar_aluno/${alunoData.numero_matricula}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alunoData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('mensagemEditar').innerText = data.message || data.error;
+            document.getElementById('mensagemEditar').style.display = 'block';
+        })
+        .catch(error => {
+            document.getElementById('mensagemEditar').innerText = 'Erro ao editar o aluno.';
+            document.getElementById('mensagemEditar').style.display = 'block';
+        });
+    }
+    
+    function excluirAluno() {
+        const numeroMatricula = document.getElementById('numeroMatriculaExcluir').value;
+    
+        fetch(`/excluir_aluno/${numeroMatricula}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            const mensagemExcluir = document.getElementById('mensagemExcluir');
+            mensagemExcluir.innerText = data.message || data.error;
+            mensagemExcluir.style.display = 'block';
+        })
+        .catch(error => {
+            document.getElementById('mensagemExcluir').innerText = 'Erro ao excluir o aluno.';
+            document.getElementById('mensagemExcluir').style.display = 'block';
+        });
+    }
+    
+    function pesquisarAluno() {
+        const numeroMatricula = document.getElementById('numeroMatriculaPesquisa').value.trim();
+        const nome = document.getElementById('nomePesquisa').value.trim();
+    
+        if (!numeroMatricula && !nome) {
+            alert('Por favor, insira o número de matrícula ou o nome para realizar a pesquisa.');
+            return;
+        }
+    
+        const url = `/pesquisar_aluno?numero_matricula=${encodeURIComponent(numeroMatricula)}&nome=${encodeURIComponent(nome)}`;
+    
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const resultadoDiv = document.getElementById('resultadoPesquisa');
+            const listaAlunos = document.getElementById('listaAlunos');
+            resultadoDiv.style.display = 'none';
+            listaAlunos.style.display = 'none';
+            resultadoDiv.innerHTML = '';
+            listaAlunos.innerHTML = '';
+    
+            if (data.error) {
+                resultadoDiv.innerText = data.error;
+                resultadoDiv.style.display = 'block';
+            } else if (Array.isArray(data)) {
+                if (data.length === 1) {
+                    const aluno = data[0];
+                    resultadoDiv.innerHTML = `
+                        <p><strong>Nome:</strong> ${aluno.nome}</p>
+                        <p><strong>Número Matrícula:</strong> ${aluno.numero_matricula}</p>
+                        <p><strong>Data Matrícula:</strong> ${aluno.data_matricula}</p>
+                        <p><strong>Atestados:</strong> ${aluno.atestados}</p>
+                        <p><strong>Encaminhamento:</strong> ${aluno.encaminhamento}</p>
+                        <p><strong>Observações:</strong> ${aluno.obs}</p>
+                    `;
+                    resultadoDiv.style.display = 'block';
+                } else if (data.length > 1) {
+                    data.forEach(aluno => {
+                        const li = document.createElement('li');
+                        li.className = 'search-result';
+                        li.innerHTML = `<a href="/detalhes_aluno/${aluno.numero_matricula}" target="_blank">
+                                        ${aluno.nome} - Matrícula: ${aluno.numero_matricula}</a>`;
+                        listaAlunos.appendChild(li);
+                    });
+                    listaAlunos.style.display = 'block';
+                } else {
+                    resultadoDiv.innerText = 'Nenhum aluno encontrado.';
+                    resultadoDiv.style.display = 'block';
+                }
+            } else {
+                resultadoDiv.innerText = 'Nenhum aluno encontrado.';
+                resultadoDiv.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar o aluno:', error);
+            document.getElementById('resultadoPesquisa').innerText = 'Erro ao buscar o aluno.';
+            document.getElementById('resultadoPesquisa').style.display = 'block';
+        });
+    }
+    
+    function criarModulo() {
+        const nome = document.getElementById('nomeModulo').value;
+        if (!nome) {
+            document.getElementById('mensagemModulo').innerText = 'Por favor, insira o nome do módulo.';
+            return;
+        }
+    
+        fetch('/criar_modulo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('mensagemModulo').innerText = data.message || data.error;
+            document.getElementById('nomeModulo').value = '';
+    
+            // Atualiza a lista de módulos após criar um novo
+            carregarModulos();
+        })
+        .catch(error => {
+            document.getElementById('mensagemModulo').innerText = 'Erro ao criar o módulo.';
+            console.error('Erro:', error);
+        });
+    }
+    
+    function excluirModulo() {
+        const nome = document.getElementById('moduleNameExcluir').value;
+        if (!nome) {
+            document.getElementById('mensagemExcluirModulo').innerText = 'Por favor, insira o nome do módulo a ser excluído.';
+            return;
+        }
+    
+        fetch('/excluir_modulo', {
+            method: 'POST', // Alterado para POST
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('mensagemExcluirModulo').innerText = data.message || data.error;
+            document.getElementById('moduleNameExcluir').value = '';
+    
+            // Atualiza a lista de módulos após excluir um
+            carregarModulos();
+        })
+        .catch(error => {
+            document.getElementById('mensagemExcluirModulo').innerText = 'Erro ao excluir o módulo.';
+            console.error('Erro:', error);
+        });
+    }
+    
+    let alunoIdAtual, moduleIdAtual; // Variáveis globais para armazenar IDs
+
+// Exibe a aba de Visualizar ou Editar
+function showStudentTab(tabId) {
+    document.querySelectorAll('.student-tab-content').forEach(tab => tab.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+}
+    
+    // Função para carregar e exibir módulos
+    function carregarModulos() {
+        fetch('/listar_modulos')
+            .then(response => response.json())
+            .then(data => {
+                const moduleList = document.getElementById('moduleList');
+                moduleList.innerHTML = '';  // Limpa a lista para evitar duplicatas
+                data.forEach(modulo => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `ID: ${modulo.id} - Nome: ${modulo.nome} 
+                        <button onclick="verAlunosDoModulo(${modulo.id})" class="action-button">Ver Alunos</button>`;
+                    moduleList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Erro ao carregar módulos:', error));
+    }
+    
+    function verAlunosDoModulo(moduleId) {
+    fetch(`/ver_alunos_modulo/${moduleId}`)
+        .then(response => response.json())
+        .then(data => {
+            const studentList = document.getElementById('studentList');
+            studentList.innerHTML = ''; // Limpa a lista para novo conteúdo
+
+            if (data.error) {
+                studentList.innerHTML = `<li>${data.error}</li>`;
+            } else {
+                data.forEach(aluno => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <strong>Nome:</strong> ${aluno.nome} - 
+                        <strong>Matrícula:</strong> ${aluno.numero_matricula} 
+                        <button onclick="carregarDetalhesAluno(${aluno.id}, ${moduleId})" class="action-button">Visualizar Informações</button>
+                    `;
+                    studentList.appendChild(li);
+                });
+            }
+
+            document.getElementById('studentListContainer').style.display = 'block';
+        })
+        .catch(error => console.error('Erro ao buscar alunos do módulo:', error));
+}
+    
+ // Função para carregar os detalhes do aluno e do módulo
+ function carregarDetalhesAluno(alunoId, moduleId) {
+        alunoIdAtual = alunoId;
+        moduleIdAtual = moduleId;
+
+        fetch(`/obter_dados_modulo_aluno/${alunoId}/${moduleId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Atualiza as informações na interface
+                document.getElementById('detalhesNome').textContent = data.nome;
+                document.getElementById('detalhesMatricula').textContent = data.numero_matricula;
+                document.getElementById('detalhesFaltas').textContent = data.faltas;
+                document.getElementById('detalhesNotaTutor').textContent = data.nota_tutor;
+                document.getElementById('detalhesNotaAvaliacaoRegular').textContent = data.nota_avaliacao_regular;
+                document.getElementById('detalhesNotaRecuperacao').textContent = data.nota_recuperacao;
+                document.getElementById('detalhesNotaFinal').textContent = data.nota_final;
+
+                // Exibe a seção de detalhes do aluno
+                document.getElementById('studentDetailsContainer').style.display = 'block';
+                showStudentTab('view-info');
+            })
+            .catch(error => console.error('Erro ao carregar os detalhes do aluno:', error));
+    }
+
+    function salvarEdicao() {
+        const dados = {};
+
+        // Obtém os valores dos campos; adiciona ao objeto apenas se preenchido
+        const faltas = document.getElementById('editFaltas').value;
+        if (faltas) dados.faltas = parseInt(faltas);
+
+        const notaTutor = document.getElementById('editNotaTutor').value;
+        if (notaTutor) dados.nota_tutor = parseFloat(notaTutor);
+
+        const notaAvaliacaoRegular = document.getElementById('editNotaAvaliacaoRegular').value;
+        if (notaAvaliacaoRegular) dados.nota_avaliacao_regular = parseFloat(notaAvaliacaoRegular);
+
+        const notaRecuperacao = document.getElementById('editNotaRecuperacao').value;
+        if (notaRecuperacao) dados.nota_recuperacao = parseFloat(notaRecuperacao);
+
+        const notaFinal = document.getElementById('editNotaFinal').value;
+        if (notaFinal) dados.nota_final = parseFloat(notaFinal);
+
+        // Envia os dados preenchidos para o servidor
+        fetch(`/editar_informacoes_modulo/${alunoIdAtual}/${moduleIdAtual}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            carregarDetalhesAluno(alunoIdAtual, moduleIdAtual); // Atualiza os dados após edição
+            showStudentTab('view-info');
+        })
+        .catch(error => console.error('Erro ao salvar edição:', error));
+    }
+
+</script>
+</body>
+</html>
