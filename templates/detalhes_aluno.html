@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Aluno - {{ aluno.nome }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1><i class="bi bi-person-badge-fill me-3"></i>Detalhes do Aluno</h1>
+    <p>Informações completas e histórico acadêmico</p>
+</div>
+
+<!-- Student Info Card -->
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-circle me-2"></i>Informações Pessoais
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="avatar-placeholder">
+                        <i class="bi bi-person-fill display-1 text-primary"></i>
+                    </div>
+        </div>
+        
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong><i class="bi bi-person me-1"></i>Nome:</strong></td>
+                        <td>{{ aluno.nome }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong><i class="bi bi-card-text me-1"></i>Matrícula:</strong></td>
+                        <td><span class="badge bg-primary">{{ aluno.numero_matricula }}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong><i class="bi bi-calendar me-1"></i>Data Matrícula:</strong></td>
+                        <td>{{ aluno.data_matricula }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong><i class="bi bi-file-medical me-1"></i>Atestados:</strong></td>
+                        <td><span class="badge bg-secondary">{{ aluno.atestados }}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong><i class="bi bi-arrow-right-circle me-1"></i>Encaminhamento:</strong></td>
+                        <td>{{ aluno.encaminhamento or 'Não informado' }}</td>
+                    </tr>
+                </table>
+                
+                {% if aluno.obs %}
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-chat-text me-1"></i>Observações:</h6>
+                    <p class="mb-0">{{ aluno.obs }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up me-2"></i>Desempenho Acadêmico por Módulo
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if modules %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th><i class="bi bi-folder me-1"></i>Módulo</th>
+                                    <th><i class="bi bi-calendar-x me-1"></i>Faltas</th>
+                                    <th><i class="bi bi-star me-1"></i>Tutor</th>
+                                    <th><i class="bi bi-clipboard-check me-1"></i>Avaliação</th>
+                                    <th><i class="bi bi-arrow-repeat me-1"></i>Recuperação</th>
+                                    <th><i class="bi bi-trophy me-1"></i>Final</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for module in modules %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ module.module_nome }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if module.faltas > 5 %}danger{% elif module.faltas > 3 %}warning{% else %}secondary{% endif %}">
+                                            {{ module.faltas }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if module.nota_tutor >= 7 %}success{% elif module.nota_tutor >= 5 %}warning{% else %}danger{% endif %}">
+                                            {{ "%.1f"|format(module.nota_tutor) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if module.nota_avaliacao_regular >= 7 %}success{% elif module.nota_avaliacao_regular >= 5 %}warning{% else %}danger{% endif %}">
+                                            {{ "%.1f"|format(module.nota_avaliacao_regular) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if module.nota_recuperacao >= 7 %}success{% elif module.nota_recuperacao >= 5 %}warning{% else %}danger{% endif %}">
+                                            {{ "%.1f"|format(module.nota_recuperacao) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if module.nota_final >= 7 %}success{% elif module.nota_final >= 5 %}warning{% else %}danger{% endif %} fs-6">
+                                            {{ "%.1f"|format(module.nota_final) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if module.nota_final >= 7 %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>Aprovado
+                                            </span>
+                                        {% elif module.nota_final >= 5 %}
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-exclamation-triangle me-1"></i>Recuperação
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-x-circle me-1"></i>Reprovado
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle display-1 text-muted"></i>
+                        <h4 class="mt-3">Nenhum módulo encontrado</h4>
+                        <p class="text-muted">Este aluno ainda não está matriculado em nenhum módulo.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="mb-3">Ações Disponíveis</h6>
+                <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                    <i class="bi bi-house me-1"></i>Voltar ao Início
+                </a>
+                <button onclick="window.print()" class="btn btn-outline-secondary me-2">
+                    <i class="bi bi-printer me-1"></i>Imprimir Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-placeholder {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary-color), #0056b3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.3s ease;
+    }
+</style>
+{% endblock %}
