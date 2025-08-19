@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Alunos - Sistema de Gestão{% endblock %}
+{% block page_title %}Gestão de Alunos{% endblock %}
+{% block page_subtitle %}Visualize, pesquise e gerencie todos os alunos cadastrados{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <button class="btn btn-primary btn-lg" onclick="openAddStudentModal()">
+            <i class="bi bi-person-plus me-2"></i>Adicionar Novo Aluno
+        </button>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control" id="searchInput" placeholder="Pesquisar por nome ou matrícula...">
+            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4 class="text-primary">{{ alunos|length }}</h4>
+                <p class="text-muted mb-0">Total de Alunos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4 class="text-success" id="alunosAtivos">{{ alunos|length }}</h4>
+                <p class="text-muted mb-0">Alunos Ativos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4 class="text-warning">{{ alunos|selectattr('atestados', 'gt', 3)|list|length }}</h4>
+                <p class="text-muted mb-0">Com Muitos Atestados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h4 class="text-info" id="alunosRecentes">0</h4>
+                <p class="text-muted mb-0">Cadastros Recentes</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Students Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-people me-2"></i>Lista de Alunos
+            </h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="exportToExcel()">
+                    <i class="bi bi-download me-1"></i>Exportar
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="printTable()">
+                    <i class="bi bi-printer me-1"></i>Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if alunos %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="alunosTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)" style="cursor: pointer;">
+                            <i class="bi bi-person me-1"></i>Nome 
+                            <i class="bi bi-chevron-expand"></i>
+                        </th>
+                        <th onclick="sortTable(1)" style="cursor: pointer;">
+                            <i class="bi bi-card-text me-1"></i>Matrícula 
+                            <i class="bi bi-chevron-expand"></i>
+                        </th>
+                        <th onclick="sortTable(2)" style="cursor: pointer;">
+                            <i class="bi bi-calendar me-1"></i>Data Matrícula 
+                            <i class="bi bi-chevron-expand"></i>
+                        </th>
+                        <th>
+                            <i class="bi bi-file-medical me-1"></i>Atestados
+                        </th>
+                        <th>
+                            <i class="bi bi-arrow-right-circle me-1"></i>Encaminhamento
+                        </th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="alunosTableBody">
+                    {% for aluno in alunos %}
+                    <tr data-nome="{{ aluno.nome|lower }}" data-matricula="{{ aluno.numero_matricula|lower }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-2">
+                                    <i class="bi bi-person-circle text-primary fs-4"></i>
+                                </div>
+                                <div>
+                                    <strong>{{ aluno.nome }}</strong>
+                                    {% if aluno.obs %}
+                                    <br><small class="text-muted">{{ aluno.obs[:50] }}{% if aluno.obs|length > 50 %}...{% endif %}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ aluno.numero_matricula }}</span>
+                        </td>
+                        <td>{{ aluno.data_matricula }}</td>
+                        <td>
+                            <span class="badge bg-{% if aluno.atestados > 5 %}danger{% elif aluno.atestados > 3 %}warning{% else %}secondary{% endif %}">
+                                {{ aluno.atestados }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if aluno.encaminhamento %}
+                                <span class="text-truncate" style="max-width: 150px; display: inline-block;" title="{{ aluno.encaminhamento }}">
+                                    {{ aluno.encaminhamento }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('detalhes_aluno', aluno_id=aluno.id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   data-bs-toggle="tooltip" 
+                                   title="Ver detalhes completos">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button class="btn btn-outline-warning" 
+                                        onclick="editarAlunoModal('{{ aluno.numero_matricula }}')"
+                                        data-bs-toggle="tooltip" 
+                                        title="Editar aluno">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" 
+                                        onclick="confirmarExclusao('{{ aluno.numero_matricula }}', '{{ aluno.nome }}')"
+                                        data-bs-toggle="tooltip" 
+                                        title="Excluir aluno">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination (se necessário no futuro) -->
+        <nav aria-label="Navegação da tabela" class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <span class="page-link">Mostrando {{ alunos|length }} aluno(s)</span>
+                </li>
+            </ul>
+        </nav>
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <i class="bi bi-people display-1 text-muted mb-3"></i>
+            <h4 class="text-muted">Nenhum aluno cadastrado</h4>
+            <p class="text-muted mb-4">
+                Comece adicionando o primeiro aluno ao sistema para começar a gerenciar as informações acadêmicas.
+            </p>
+            <button class="btn btn-primary btn-lg" onclick="openAddStudentModal()">
+                <i class="bi bi-person-plus me-2"></i>Adicionar Primeiro Aluno
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Messages -->
+<div id="mensagensAlunos" class="mt-3"></div>
+
+<!-- Modal para edição rápida -->
+<div class="modal fade" id="editStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Editar Aluno
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editStudentForm">
+                    <input type="hidden" id="editMatriculaOriginal">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editNome" class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="editNome" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMatricula" class="form-label">Matrícula</label>
+                            <input type="text" class="form-control" id="editMatricula" readonly>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editDataMatricula" class="form-label">Data Matrícula</label>
+                            <input type="date" class="form-control" id="editDataMatricula">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editAtestados" class="form-label">Atestados</label>
+                            <input type="number" class="form-control" id="editAtestados" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEncaminhamento" class="form-label">Encaminhamento</label>
+                        <input type="text" class="form-control" id="editEncaminhamento">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editObs" class="form-label">Observações</label>
+                        <textarea class="form-control" id="editObs" rows="3"></textarea>
+                    </div>
+                </form>
+                <div id="mensagemEdit" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEdicaoAluno()">
+                    <i class="bi bi-check me-1"></i>Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Configurar pesquisa em tempo real
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    const tableBody = document.getElementById('alunosTableBody');
+    
+    if (searchInput && tableBody) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = tableBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const nome = row.dataset.nome || '';
+                const matricula = row.dataset.matricula || '';
+                
+                if (nome.includes(searchTerm) || matricula.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        clearSearch.addEventListener('click', function() {
+            searchInput.value = '';
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => row.style.display = '');
+        });
+    }
+    
+    // Calcular alunos cadastrados recentemente (último mês)
+    const hoje = new Date();
+    const umMesAtras = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate());
+    let alunosRecentes = 0;
+    
+    {% for aluno in alunos %}
+    const dataMatricula = new Date('{{ aluno.data_matricula }}');
+    if (dataMatricula >= umMesAtras) {
+        alunosRecentes++;
+    }
+    {% endfor %}
+    
+    document.getElementById('alunosRecentes').textContent = alunosRecentes;
+});
+
+// Função para ordenar tabela
+let sortDirection = {};
+function sortTable(columnIndex) {
+    const table = document.getElementById('alunosTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Determinar direção da ordenação
+    const isAsc = sortDirection[columnIndex] !== 'asc';
+    sortDirection = {}; // Reset all directions
+    sortDirection[columnIndex] = isAsc ? 'asc' : 'desc';
+    
+    // Ordenar linhas
+    rows.sort((a, b) => {
+        const aText = a.cells[columnIndex].textContent.trim();
+        const bText = b.cells[columnIndex].textContent.trim();
+        
+        // Tratamento especial para datas
+        if (columnIndex === 2) {
+            const aDate = new Date(aText);
+            const bDate = new Date(bText);
+            return isAsc ? aDate - bDate : bDate - aDate;
+        }
+        
+        // Ordenação padrão
+        return isAsc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    });
+    
+    // Reorganizar tabela
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Atualizar ícones de ordenação
+    const headers = table.querySelectorAll('th i.bi-chevron-expand');
+    headers.forEach(icon => {
+        icon.className = 'bi bi-chevron-expand';
+    });
+    
+    const currentHeader = table.querySelectorAll('th')[columnIndex].querySelector('i.bi-chevron-expand');
+    currentHeader.className = isAsc ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+}
+
+// Função para editar aluno
+async function editarAlunoModal(matricula) {
+    try {
+        // Buscar dados do aluno
+        const response = await fetch(`/pesquisar_aluno?numero_matricula=${matricula}`);
+        const data = await response.json();
+        
+        if (data.length > 0) {
+            const aluno = data[0];
+            
+            // Preencher modal
+            document.getElementById('editMatriculaOriginal').value = matricula;
+            document.getElementById('editNome').value = aluno.nome;
+            document.getElementById('editMatricula').value = aluno.numero_matricula;
+            document.getElementById('editDataMatricula').value = aluno.data_matricula;
+            document.getElementById('editAtestados').value = aluno.atestados;
+            document.getElementById('editEncaminhamento').value = aluno.encaminhamento || '';
+            document.getElementById('editObs').value = aluno.obs || '';
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('editStudentModal'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar dados do aluno:', error);
+        showMessage('mensagensAlunos', 'Erro ao carregar dados do aluno', 'danger');
+    }
+}
+
+// Função para salvar edição
+async function salvarEdicaoAluno() {
+    const matriculaOriginal = document.getElementById('editMatriculaOriginal').value;
+    
+    const dadosAluno = {
+        nome: document.getElementById('editNome').value,
+        data_matricula: document.getElementById('editDataMatricula').value,
+        atestados: parseInt(document.getElementById('editAtestados').value) || 0,
+        encaminhamento: document.getElementById('editEncaminhamento').value,
+        obs: document.getElementById('editObs').value
+    };
+    
+    try {
+        const response = await fetch(`/editar_aluno/${matriculaOriginal}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dadosAluno)
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            showMessage('mensagemEdit', result.error, 'danger');
+        } else {
+            showMessage('mensagensAlunos', result.message, 'success');
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editStudentModal'));
+            modal.hide();
+            // Recarregar página
+            setTimeout(() => location.reload(), 1500);
+        }
+    } catch (error) {
+        console.error('Erro ao editar aluno:', error);
+        showMessage('mensagemEdit', 'Erro ao salvar alterações', 'danger');
+    }
+}
+
+// Função para confirmar exclusão
+function confirmarExclusao(matricula, nome) {
+    if (confirm(`Tem certeza que deseja excluir o aluno ${nome} (${matricula})?\n\nEsta ação não pode ser desfeita.`)) {
+        excluirAluno(matricula);
+    }
+}
+
+// Função para excluir aluno
+async function excluirAluno(matricula) {
+    try {
+        const response = await fetch(`/excluir_aluno/${matricula}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            showMessage('mensagensAlunos', result.error, 'danger');
+        } else {
+            showMessage('mensagensAlunos', result.message, 'success');
+            // Recarregar página
+            setTimeout(() => location.reload(), 1500);
+        }
+    } catch (error) {
+        console.error('Erro ao excluir aluno:', error);
+        showMessage('mensagensAlunos', 'Erro ao excluir aluno', 'danger');
+    }
+}
+
+// Funções de exportação (placeholder)
+function exportToExcel() {
+    alert('Funcionalidade de exportação será implementada em breve!');
+}
+
+function printTable() {
+    window.print();
+}
+</script>
+{% endblock %}

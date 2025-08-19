@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Period Grade System</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --color-black: #000000;
+            --color-white: #ffffff;
+            --color-gray-50: #fafafa;
+            --color-gray-100: #f5f5f5;
+            --color-gray-200: #e5e5e5;
+            --color-gray-300: #d4d4d4;
+            --color-gray-400: #a3a3a3;
+            --color-gray-500: #737373;
+            --color-gray-600: #525252;
+            --color-gray-700: #404040;
+            --color-gray-800: #262626;
+            --color-gray-900: #171717;
+            
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            --border-radius: 6px;
+            --border-radius-lg: 12px;
+            --border-width: 1px;
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --transition: all 0.2s ease-in-out;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--color-gray-50);
+            color: var(--color-gray-900);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .login-card {
+            background-color: var(--color-white);
+            border: var(--border-width) solid var(--color-gray-200);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .logo i {
+            font-size: 2rem;
+            color: var(--color-black);
+        }
+        
+        .logo span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-black);
+        }
+        
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--color-black);
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-subtitle {
+            font-size: 0.875rem;
+            color: var(--color-gray-600);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-gray-900);
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            border: var(--border-width) solid var(--color-gray-300);
+            border-radius: var(--border-radius);
+            background-color: var(--color-white);
+            transition: var(--transition);
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-black);
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            border: var(--border-width) solid transparent;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            line-height: 1.25;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background-color: var(--color-black);
+            color: var(--color-white);
+            border-color: var(--color-black);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--color-gray-800);
+            border-color: var(--color-gray-800);
+            color: var(--color-white);
+        }
+        
+        .alert {
+            border: var(--border-width) solid;
+            border-radius: var(--border-radius);
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .alert-danger {
+            background-color: var(--color-gray-50);
+            border-color: var(--color-gray-300);
+            color: var(--color-gray-800);
+        }
+        
+        .alert-success {
+            background-color: var(--color-gray-50);
+            border-color: var(--color-gray-300);
+            color: var(--color-gray-800);
+        }
+        
+        .alert-info {
+            background-color: var(--color-gray-50);
+            border-color: var(--color-gray-300);
+            color: var(--color-gray-800);
+        }
+        
+        .demo-credentials {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: var(--color-gray-50);
+            border-radius: var(--border-radius);
+            font-size: 0.8125rem;
+        }
+        
+        .demo-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--color-black);
+        }
+        
+        .demo-item {
+            margin-bottom: 0.25rem;
+            color: var(--color-gray-700);
+        }
+        
+        .demo-item strong {
+            color: var(--color-black);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <span>PGS</span>
+                </div>
+                <h1 class="login-title">Bem-vindo</h1>
+                <p class="login-subtitle">Faça login para acessar o sistema</p>
+            </div>
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username" class="form-label">Usuário</label>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="username" 
+                        name="username" 
+                        required 
+                        autofocus
+                        placeholder="Digite seu usuário">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <input 
+                        type="password" 
+                        class="form-control" 
+                        id="password" 
+                        name="password" 
+                        required
+                        placeholder="Digite sua senha">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Entrar
+                </button>
+            </form>
+            
+            <div class="demo-credentials">
+                <div class="demo-title">Credenciais de Demonstração:</div>
+                <div class="demo-item"><strong>Admin:</strong> admin / admin123</div>
+                <div class="demo-item"><strong>Coordenador:</strong> coord1 / coord123</div>
+                <div class="demo-item"><strong>Professor:</strong> prof1 / prof123</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

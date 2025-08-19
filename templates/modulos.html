@@ -1,0 +1,606 @@
+{% extends "base.html" %}
+
+{% block title %}Módulos - Sistema de Gestão{% endblock %}
+{% block page_title %}Gestão de Módulos{% endblock %}
+{% block page_subtitle %}Crie, visualize e gerencie módulos de ensino e avaliações{% endblock %}
+
+{% block content %}
+<!-- Action Bar -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-folder-plus me-2"></i>Criar Novo Módulo
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="createModuleForm" class="row g-3">
+                    <div class="col-md-8">
+                        <label for="nomeModuloPage" class="form-label">
+                            <i class="bi bi-folder me-1"></i>Nome do Módulo *
+                        </label>
+                        <input type="text" class="form-control" id="nomeModuloPage" 
+                               placeholder="Ex: Matemática I, Português, História..." required>
+                        <div class="form-text">
+                            Todos os alunos cadastrados serão automaticamente adicionados ao novo módulo.
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" onclick="criarModuloPage()" class="btn btn-success w-100">
+                            <i class="bi bi-plus-circle me-1"></i>Criar Módulo
+                        </button>
+                    </div>
+                </form>
+                <div id="mensagemCriarModulo" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-info-circle display-4 text-primary mb-3"></i>
+                <h6>Dica</h6>
+                <p class="text-muted mb-0">
+                    Organize suas disciplinas em módulos para facilitar o acompanhamento do desempenho dos alunos.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modules List -->
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Módulos Cadastrados
+            </h5>
+            <button class="btn btn-outline-danger btn-sm" onclick="toggleDeleteMode()" id="deleteToggleBtn">
+                <i class="bi bi-trash me-1"></i>Modo Exclusão
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="modulesList" class="row">
+            <!-- Módulos serão carregados via JavaScript -->
+        </div>
+        <div id="loadingModules" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando módulos...</span>
+            </div>
+            <p class="mt-2 text-muted">Carregando módulos...</p>
+        </div>
+        <div id="mensagemModulos" class="mt-3"></div>
+    </div>
+</div>
+
+<!-- Students in Module Section -->
+<div id="studentsInModuleSection" class="mt-4" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2"></i>
+                    <span id="moduleNameTitle">Alunos do Módulo</span>
+                </h5>
+                <button class="btn btn-outline-secondary btn-sm" onclick="hideStudentsSection()">
+                    <i class="bi bi-x-circle me-1"></i>Fechar
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="studentsInModuleList">
+                <!-- Alunos do módulo serão carregados aqui -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Student Details Section -->
+<div id="studentDetailsSection" class="mt-4" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <button class="nav-link active" onclick="showStudentTab('view-info')">
+                        <i class="bi bi-eye me-1"></i>Visualizar
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" onclick="showStudentTab('edit-info')">
+                        <i class="bi bi-pencil me-1"></i>Editar Notas
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <!-- Tab para Visualizar Informações -->
+            <div id="view-info" class="student-tab-content">
+                <h6 class="mb-3">
+                    <i class="bi bi-person-badge me-2"></i>Informações do Aluno
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong><i class="bi bi-person me-1"></i>Nome:</strong></td>
+                                <td><span id="detalhesNome" class="text-primary"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong><i class="bi bi-card-text me-1"></i>Matrícula:</strong></td>
+                                <td><span id="detalhesMatricula"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong><i class="bi bi-calendar-x me-1"></i>Faltas:</strong></td>
+                                <td><span id="detalhesFaltas" class="badge bg-secondary"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong><i class="bi bi-star me-1"></i>Nota do Tutor:</strong></td>
+                                <td><span id="detalhesNotaTutor" class="badge bg-info"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong><i class="bi bi-clipboard-check me-1"></i>Avaliação Regular:</strong></td>
+                                <td><span id="detalhesNotaAvaliacaoRegular" class="badge bg-primary"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong><i class="bi bi-arrow-repeat me-1"></i>Recuperação:</strong></td>
+                                <td><span id="detalhesNotaRecuperacao" class="badge bg-warning"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong><i class="bi bi-trophy me-1"></i>Nota Final:</strong></td>
+                                <td><span id="detalhesNotaFinal" class="badge bg-success"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab para Editar Informações -->
+            <div id="edit-info" class="student-tab-content" style="display: none;">
+                <h6 class="mb-3">
+                    <i class="bi bi-pencil-square me-2"></i>Editar Avaliações
+                </h6>
+                <form id="editGradesForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editFaltas" class="form-label">
+                                <i class="bi bi-calendar-x me-1"></i>Faltas
+                            </label>
+                            <input type="number" class="form-control" id="editFaltas" min="0" placeholder="Número de faltas">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editNotaTutor" class="form-label">
+                                <i class="bi bi-star me-1"></i>Nota do Tutor
+                            </label>
+                            <input type="number" class="form-control" id="editNotaTutor" min="0" max="10" step="0.1" placeholder="0.0 - 10.0">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editNotaAvaliacaoRegular" class="form-label">
+                                <i class="bi bi-clipboard-check me-1"></i>Avaliação Regular
+                            </label>
+                            <input type="number" class="form-control" id="editNotaAvaliacaoRegular" min="0" max="10" step="0.1" placeholder="0.0 - 10.0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editNotaRecuperacao" class="form-label">
+                                <i class="bi bi-arrow-repeat me-1"></i>Recuperação
+                            </label>
+                            <input type="number" class="form-control" id="editNotaRecuperacao" min="0" max="10" step="0.1" placeholder="0.0 - 10.0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editNotaFinal" class="form-label">
+                            <i class="bi bi-trophy me-1"></i>Nota Final
+                        </label>
+                        <input type="number" class="form-control" id="editNotaFinal" min="0" max="10" step="0.1" placeholder="0.0 - 10.0">
+                    </div>
+                    <div class="d-grid">
+                        <button type="button" onclick="salvarEdicaoNotas()" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+                <div id="mensagemEditarNotas" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let deleteMode = false;
+let currentModuleId = null;
+let alunoIdAtual = null;
+let moduleIdAtual = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarModulosPage();
+});
+
+// Carregar módulos na página
+async function carregarModulosPage() {
+    try {
+        document.getElementById('loadingModules').style.display = 'block';
+        document.getElementById('modulesList').innerHTML = '';
+        
+        const response = await fetch('/listar_modulos');
+        const modules = await response.json();
+        
+        document.getElementById('loadingModules').style.display = 'none';
+        
+        const modulesList = document.getElementById('modulesList');
+        
+        if (modules.length === 0) {
+            modulesList.innerHTML = `
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-folder display-1 text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhum módulo criado</h4>
+                        <p class="text-muted">Comece criando seu primeiro módulo de ensino.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        modules.forEach((module, index) => {
+            html += `
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card h-100 module-card" data-module-id="${module.id}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title mb-0">
+                                    <i class="bi bi-folder-fill text-primary me-2"></i>
+                                    ${module.nome}
+                                </h6>
+                                <div class="module-actions">
+                                    ${deleteMode ? `
+                                        <button class="btn btn-outline-danger btn-sm" onclick="confirmarExclusaoModulo('${module.nome}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <p class="card-text text-muted">ID: ${module.id}</p>
+                            <div class="d-grid">
+                                <button onclick="verAlunosDoModuloPage(${module.id}, '${module.nome}')" 
+                                        class="btn btn-primary btn-sm">
+                                    <i class="bi bi-people me-1"></i>Ver Alunos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        modulesList.innerHTML = html;
+        
+        // Adicionar animação aos cards
+        setTimeout(() => {
+            const cards = modulesList.querySelectorAll('.module-card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('fade-in');
+                }, index * 100);
+            });
+        }, 100);
+        
+    } catch (error) {
+        console.error('Erro ao carregar módulos:', error);
+        document.getElementById('loadingModules').style.display = 'none';
+        showMessage('mensagemModulos', 'Erro ao carregar módulos', 'danger');
+    }
+}
+
+// Criar módulo na página
+async function criarModuloPage() {
+    const nome = document.getElementById('nomeModuloPage').value.trim();
+    
+    if (!nome) {
+        showMessage('mensagemCriarModulo', 'Por favor, informe o nome do módulo.', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/criar_modulo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome })
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            showMessage('mensagemCriarModulo', result.error, 'danger');
+        } else {
+            showMessage('mensagemCriarModulo', result.message, 'success');
+            document.getElementById('nomeModuloPage').value = '';
+            carregarModulosPage(); // Recarregar lista
+        }
+    } catch (error) {
+        console.error('Erro ao criar módulo:', error);
+        showMessage('mensagemCriarModulo', 'Erro ao criar módulo', 'danger');
+    }
+}
+
+// Ver alunos do módulo
+async function verAlunosDoModuloPage(moduleId, moduleName) {
+    currentModuleId = moduleId;
+    moduleIdAtual = moduleId;
+    
+    try {
+        const response = await fetch(`/ver_alunos_modulo/${moduleId}`);
+        const result = await response.json();
+        
+        document.getElementById('moduleNameTitle').textContent = `Alunos do Módulo: ${moduleName}`;
+        
+        const studentsContainer = document.getElementById('studentsInModuleList');
+        
+        if (result.error) {
+            studentsContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    ${result.error}
+                </div>
+            `;
+        } else {
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-person me-1"></i>Nome</th>
+                                <th><i class="bi bi-card-text me-1"></i>Matrícula</th>
+                                <th><i class="bi bi-calendar-x me-1"></i>Faltas</th>
+                                <th><i class="bi bi-trophy me-1"></i>Nota Final</th>
+                                <th>Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            result.forEach(aluno => {
+                const statusClass = aluno.nota_final >= 7 ? 'success' : aluno.nota_final >= 5 ? 'warning' : 'danger';
+                const statusText = aluno.nota_final >= 7 ? 'Aprovado' : aluno.nota_final >= 5 ? 'Recuperação' : 'Reprovado';
+                const statusIcon = aluno.nota_final >= 7 ? 'check-circle' : aluno.nota_final >= 5 ? 'exclamation-triangle' : 'x-circle';
+                
+                html += `
+                    <tr>
+                        <td><strong>${aluno.nome}</strong></td>
+                        <td><span class="badge bg-primary">${aluno.numero_matricula}</span></td>
+                        <td><span class="badge bg-secondary">${aluno.faltas}</span></td>
+                        <td><span class="badge bg-${statusClass}">${aluno.nota_final.toFixed(1)}</span></td>
+                        <td>
+                            <span class="badge bg-${statusClass}">
+                                <i class="bi bi-${statusIcon} me-1"></i>${statusText}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <button onclick="carregarDetalhesAlunoPage(${aluno.id}, ${moduleId})" 
+                                    class="btn btn-outline-primary btn-sm"
+                                    data-bs-toggle="tooltip" 
+                                    title="Ver/Editar detalhes">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            studentsContainer.innerHTML = html;
+            
+            // Inicializar tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+        
+        document.getElementById('studentsInModuleSection').style.display = 'block';
+        document.getElementById('studentsInModuleSection').scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('Erro ao carregar alunos do módulo:', error);
+        showMessage('mensagemModulos', 'Erro ao carregar alunos do módulo', 'danger');
+    }
+}
+
+// Carregar detalhes do aluno
+async function carregarDetalhesAlunoPage(alunoId, moduleId) {
+    alunoIdAtual = alunoId;
+    moduleIdAtual = moduleId;
+    
+    try {
+        const response = await fetch(`/obter_dados_modulo_aluno/${alunoId}/${moduleId}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        // Atualizar informações na interface
+        document.getElementById('detalhesNome').textContent = data.nome;
+        document.getElementById('detalhesMatricula').textContent = data.numero_matricula;
+        document.getElementById('detalhesFaltas').textContent = data.faltas;
+        document.getElementById('detalhesNotaTutor').textContent = data.nota_tutor.toFixed(1);
+        document.getElementById('detalhesNotaAvaliacaoRegular').textContent = data.nota_avaliacao_regular.toFixed(1);
+        document.getElementById('detalhesNotaRecuperacao').textContent = data.nota_recuperacao.toFixed(1);
+        document.getElementById('detalhesNotaFinal').textContent = data.nota_final.toFixed(1);
+        
+        // Atualizar cores dos badges baseado nas notas
+        updateBadgeColors();
+        
+        // Mostrar seção de detalhes
+        document.getElementById('studentDetailsSection').style.display = 'block';
+        document.getElementById('studentDetailsSection').scrollIntoView({ behavior: 'smooth' });
+        showStudentTab('view-info');
+        
+    } catch (error) {
+        console.error('Erro ao carregar detalhes do aluno:', error);
+        showMessage('mensagemModulos', 'Erro ao carregar detalhes do aluno', 'danger');
+    }
+}
+
+// Atualizar cores dos badges
+function updateBadgeColors() {
+    const badges = ['detalhesNotaTutor', 'detalhesNotaAvaliacaoRegular', 'detalhesNotaRecuperacao', 'detalhesNotaFinal'];
+    
+    badges.forEach(badgeId => {
+        const badge = document.getElementById(badgeId);
+        const nota = parseFloat(badge.textContent);
+        
+        badge.className = 'badge';
+        if (nota >= 7) {
+            badge.classList.add('bg-success');
+        } else if (nota >= 5) {
+            badge.classList.add('bg-warning');
+        } else {
+            badge.classList.add('bg-danger');
+        }
+    });
+}
+
+// Alternar abas do aluno
+function showStudentTab(tabId) {
+    const tabs = document.querySelectorAll('.student-tab-content');
+    const navLinks = document.querySelectorAll('.nav-tabs .nav-link');
+    
+    tabs.forEach(tab => tab.style.display = 'none');
+    navLinks.forEach(link => link.classList.remove('active'));
+    
+    document.getElementById(tabId).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+// Salvar edição de notas
+async function salvarEdicaoNotas() {
+    const dados = {};
+    
+    // Obter valores dos campos
+    const campos = [
+        { id: 'editFaltas', key: 'faltas', type: 'int' },
+        { id: 'editNotaTutor', key: 'nota_tutor', type: 'float' },
+        { id: 'editNotaAvaliacaoRegular', key: 'nota_avaliacao_regular', type: 'float' },
+        { id: 'editNotaRecuperacao', key: 'nota_recuperacao', type: 'float' },
+        { id: 'editNotaFinal', key: 'nota_final', type: 'float' }
+    ];
+    
+    campos.forEach(campo => {
+        const element = document.getElementById(campo.id);
+        if (element && element.value.trim() !== '') {
+            if (campo.type === 'int') {
+                dados[campo.key] = parseInt(element.value) || 0;
+            } else {
+                dados[campo.key] = parseFloat(element.value) || 0;
+            }
+        }
+    });
+    
+    if (Object.keys(dados).length === 0) {
+        showMessage('mensagemEditarNotas', 'Por favor, preencha pelo menos um campo para atualizar.', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/editar_informacoes_modulo/${alunoIdAtual}/${moduleIdAtual}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dados)
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            showMessage('mensagemEditarNotas', result.error, 'danger');
+        } else {
+            showMessage('mensagemEditarNotas', result.message, 'success');
+            // Recarregar detalhes
+            await carregarDetalhesAlunoPage(alunoIdAtual, moduleIdAtual);
+            showStudentTab('view-info');
+            // Limpar campos de edição
+            campos.forEach(campo => {
+                const element = document.getElementById(campo.id);
+                if (element) element.value = '';
+            });
+            // Recarregar lista de alunos do módulo
+            verAlunosDoModuloPage(currentModuleId, document.getElementById('moduleNameTitle').textContent.split(': ')[1]);
+        }
+    } catch (error) {
+        console.error('Erro ao salvar edição:', error);
+        showMessage('mensagemEditarNotas', 'Erro ao salvar alterações', 'danger');
+    }
+}
+
+// Toggle modo de exclusão
+function toggleDeleteMode() {
+    deleteMode = !deleteMode;
+    const btn = document.getElementById('deleteToggleBtn');
+    
+    if (deleteMode) {
+        btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Cancelar';
+        btn.className = 'btn btn-secondary btn-sm';
+    } else {
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Modo Exclusão';
+        btn.className = 'btn btn-outline-danger btn-sm';
+    }
+    
+    carregarModulosPage(); // Recarregar para mostrar/ocultar botões de exclusão
+}
+
+// Confirmar exclusão de módulo
+function confirmarExclusaoModulo(nomeModulo) {
+    if (confirm(`Tem certeza que deseja excluir o módulo "${nomeModulo}"?\n\nEsta ação não pode ser desfeita e todos os dados associados serão perdidos.`)) {
+        excluirModuloPage(nomeModulo);
+    }
+}
+
+// Excluir módulo
+async function excluirModuloPage(nomeModulo) {
+    try {
+        const response = await fetch('/excluir_modulo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nome: nomeModulo })
+        });
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            showMessage('mensagemModulos', result.error, 'danger');
+        } else {
+            showMessage('mensagemModulos', result.message, 'success');
+            carregarModulosPage(); // Recarregar lista
+            hideStudentsSection(); // Esconder seção de alunos se estiver visível
+        }
+    } catch (error) {
+        console.error('Erro ao excluir módulo:', error);
+        showMessage('mensagemModulos', 'Erro ao excluir módulo', 'danger');
+    }
+}
+
+// Esconder seção de alunos
+function hideStudentsSection() {
+    document.getElementById('studentsInModuleSection').style.display = 'none';
+    document.getElementById('studentDetailsSection').style.display = 'none';
+}
+</script>
+{% endblock %}

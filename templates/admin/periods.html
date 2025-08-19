@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Períodos - Period Grade System{% endblock %}
+{% block page_title %}Gerenciar Períodos{% endblock %}
+{% block page_subtitle %}Administrar períodos acadêmicos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">Períodos Acadêmicos</h2>
+        <p class="text-muted mb-0">Gerencie períodos letivos e coordenadores</p>
+    </div>
+    <button class="btn btn-primary" onclick="showCreatePeriodModal()">
+        <i class="bi bi-calendar-plus me-2"></i>Novo Período
+    </button>
+</div>
+
+<!-- Periods Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title mb-0">Lista de Períodos</h3>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-container">
+            <table class="table" id="periodsTable">
+                <thead>
+                    <tr>
+                        <th>Nome do Período</th>
+                        <th>Coordenador</th>
+                        <th>Data Início</th>
+                        <th>Data Fim</th>
+                        <th>Status</th>
+                        <th width="120">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="periodsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner me-2"></div>
+                            Carregando períodos...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Period Modal -->
+<div class="modal fade" id="periodModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="periodModalTitle">Novo Período</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="periodForm">
+                    <input type="hidden" id="periodId">
+                    
+                    <div class="form-group">
+                        <label for="periodName" class="form-label">Nome do Período</label>
+                        <input type="text" class="form-control" id="periodName" 
+                               placeholder="Ex: 2024.1 - Primeiro Semestre" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="coordinatorId" class="form-label">Coordenador</label>
+                        <select class="form-control form-select" id="coordinatorId" required>
+                            <option value="">Selecione um coordenador</option>
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="startDate" class="form-label">Data de Início</label>
+                                <input type="date" class="form-control" id="startDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="endDate" class="form-label">Data de Fim</label>
+                                <input type="date" class="form-control" id="endDate" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="isActive" checked>
+                            Período ativo
+                        </label>
+                        <small class="form-text text-muted">Períodos ativos aparecem como opções principais no sistema</small>
+                    </div>
+                </form>
+                
+                <div id="periodModalMessage"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="savePeriod()">
+                    <span id="savePeriodText">Salvar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deletePeriodModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este período?</p>
+                <p class="text-muted mb-0">Todos os estudantes e módulos associados também serão excluídos.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeletePeriod()">Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let periods = [];
+let coordinators = [];
+let editingPeriodId = null;
+let deletingPeriodId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadPeriods();
+    loadCoordinators();
+});
+
+async function loadPeriods() {
+    try {
+        const response = await fetch('/api/periods');
+        periods = await response.json();
+        renderPeriodsTable();
+    } catch (error) {
+        console.error('Erro ao carregar períodos:', error);
+        showMessage('Erro ao carregar períodos', 'danger');
+    }
+}
+
+async function loadCoordinators() {
+    try {
+        const response = await fetch('/api/users');
+        const users = await response.json();
+        coordinators = users.filter(user => user.role === 'coordinator');
+        populateCoordinatorSelect();
+    } catch (error) {
+        console.error('Erro ao carregar coordenadores:', error);
+    }
+}
+
+function populateCoordinatorSelect() {
+    const select = document.getElementById('coordinatorId');
+    select.innerHTML = '<option value="">Selecione um coordenador</option>';
+    
+    coordinators.forEach(coordinator => {
+        select.innerHTML += `<option value="${coordinator.id}">${coordinator.full_name}</option>`;
+    });
+}
+
+function renderPeriodsTable() {
+    const tbody = document.getElementById('periodsTableBody');
+    
+    if (periods.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <i class="bi bi-calendar-range" style="font-size: 2rem; color: var(--color-gray-400);"></i>
+                    <div class="mt-2">Nenhum período encontrado</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = periods.map(period => `
+        <tr>
+            <td><strong>${period.name}</strong></td>
+            <td>${period.coordinator_name}</td>
+            <td>${formatDate(period.start_date)}</td>
+            <td>${formatDate(period.end_date)}</td>
+            <td>
+                <span class="badge badge-${period.is_active ? 'primary' : 'secondary'}">
+                    ${period.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
+            <td>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-ghost" onclick="editPeriod(${period.id})" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-ghost" onclick="deletePeriod(${period.id})" title="Excluir">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showCreatePeriodModal() {
+    editingPeriodId = null;
+    document.getElementById('periodModalTitle').textContent = 'Novo Período';
+    document.getElementById('periodForm').reset();
+    document.getElementById('periodId').value = '';
+    document.getElementById('isActive').checked = true;
+    document.getElementById('savePeriodText').textContent = 'Criar Período';
+    clearMessage('periodModalMessage');
+    
+    const modal = new bootstrap.Modal(document.getElementById('periodModal'));
+    modal.show();
+}
+
+function editPeriod(periodId) {
+    const period = periods.find(p => p.id === periodId);
+    if (!period) return;
+    
+    editingPeriodId = periodId;
+    document.getElementById('periodModalTitle').textContent = 'Editar Período';
+    document.getElementById('periodId').value = period.id;
+    document.getElementById('periodName').value = period.name;
+    document.getElementById('coordinatorId').value = period.coordinator_id;
+    document.getElementById('startDate').value = period.start_date;
+    document.getElementById('endDate').value = period.end_date;
+    document.getElementById('isActive').checked = period.is_active;
+    document.getElementById('savePeriodText').textContent = 'Atualizar Período';
+    clearMessage('periodModalMessage');
+    
+    const modal = new bootstrap.Modal(document.getElementById('periodModal'));
+    modal.show();
+}
+
+async function savePeriod() {
+    const form = document.getElementById('periodForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    const periodData = {
+        name: document.getElementById('periodName').value,
+        coordinator_id: parseInt(document.getElementById('coordinatorId').value),
+        start_date: document.getElementById('startDate').value,
+        end_date: document.getElementById('endDate').value,
+        is_active: document.getElementById('isActive').checked ? 1 : 0
+    };
+    
+    const saveBtn = document.querySelector('[onclick="savePeriod()"]');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<div class="spinner spinner-sm me-2"></div>Salvando...';
+    saveBtn.disabled = true;
+    
+    try {
+        const url = editingPeriodId ? `/api/periods/${editingPeriodId}` : '/api/periods';
+        const method = editingPeriodId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(periodData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage(result.message, 'success', 'periodModalMessage');
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('periodModal'));
+                modal.hide();
+                loadPeriods();
+            }, 1500);
+        } else {
+            showMessage(result.error, 'danger', 'periodModalMessage');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar período:', error);
+        showMessage('Erro ao salvar período', 'danger', 'periodModalMessage');
+    }
+    
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+}
+
+function deletePeriod(periodId) {
+    deletingPeriodId = periodId;
+    const modal = new bootstrap.Modal(document.getElementById('deletePeriodModal'));
+    modal.show();
+}
+
+async function confirmDeletePeriod() {
+    if (!deletingPeriodId) return;
+    
+    try {
+        const response = await fetch(`/api/periods/${deletingPeriodId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage(result.message, 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deletePeriodModal'));
+            modal.hide();
+            loadPeriods();
+        } else {
+            showMessage(result.error, 'danger');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir período:', error);
+        showMessage('Erro ao excluir período', 'danger');
+    }
+    
+    deletingPeriodId = null;
+}
+
+function showMessage(message, type, elementId = 'main') {
+    const alertClass = type === 'danger' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'danger' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const html = `
+        <div class="alert ${alertClass}">
+            <i class="bi ${icon} me-2"></i>${message}
+        </div>
+    `;
+    
+    if (elementId === 'main') {
+        const contentArea = document.querySelector('.content-area');
+        const existingAlert = contentArea.querySelector('.alert');
+        if (existingAlert) existingAlert.remove();
+        contentArea.insertAdjacentHTML('afterbegin', html);
+        
+        setTimeout(() => {
+            const alert = contentArea.querySelector('.alert');
+            if (alert) alert.remove();
+        }, 5000);
+    } else {
+        document.getElementById(elementId).innerHTML = html;
+    }
+}
+
+function clearMessage(elementId) {
+    document.getElementById(elementId).innerHTML = '';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('pt-BR');
+}
+</script>
+{% endblock %}

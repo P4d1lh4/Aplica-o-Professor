@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Sistema de Gestão de Alunos{% endblock %}</title>
+    <title>{% block title %}Period Grade System{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Fonts -->
+    <!-- Google Fonts - Inter para design minimalista -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
@@ -18,65 +18,139 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-                <i class="bi bi-mortarboard-fill me-2"></i>
-                Sistema de Alunos
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="bi bi-house me-1"></i>Início
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showTab('tab-search')">
-                            <i class="bi bi-search me-1"></i>Pesquisar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showTab('tab-view-modules')">
-                            <i class="bi bi-grid-3x3-gap me-1"></i>Módulos
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer bg-light mt-5">
-        <div class="container py-4">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="mb-0 text-muted">
-                        <i class="bi bi-mortarboard me-1"></i>
-                        Sistema de Gestão de Alunos © 2024
-                    </p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <small class="text-muted">
-                        Desenvolvido com <i class="bi bi-heart-fill text-danger"></i> e Flask
-                    </small>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <span>PGS</span>
                 </div>
             </div>
-        </div>
-    </footer>
+            
+            <div class="sidebar-menu">
+                <!-- Navigation items based on user role -->
+                {% if session.user_role %}
+                <div class="menu-section">
+                    <div class="menu-title">Principal</div>
+                    <a href="{{ url_for('dashboard') }}" class="menu-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        <i class="bi bi-grid-1x2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                
+                {% if session.user_role == 'admin' %}
+                <div class="menu-section">
+                    <div class="menu-title">Administração</div>
+                    <a href="{{ url_for('manage_users') }}" class="menu-item {% if request.endpoint == 'manage_users' %}active{% endif %}">
+                        <i class="bi bi-people"></i>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="{{ url_for('manage_periods') }}" class="menu-item {% if request.endpoint == 'manage_periods' %}active{% endif %}">
+                        <i class="bi bi-calendar-range"></i>
+                        <span>Períodos</span>
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if session.user_role == 'coordinator' %}
+                <div class="menu-section">
+                    <div class="menu-title">Coordenação</div>
+                    <a href="{{ url_for('coordinator_periods') }}" class="menu-item {% if request.endpoint == 'coordinator_periods' %}active{% endif %}">
+                        <i class="bi bi-calendar-check"></i>
+                        <span>Meus Períodos</span>
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if session.user_role == 'professor' %}
+                <div class="menu-section">
+                    <div class="menu-title">Ensino</div>
+                    <a href="{{ url_for('professor_modules') }}" class="menu-item {% if request.endpoint == 'professor_modules' %}active{% endif %}">
+                        <i class="bi bi-book"></i>
+                        <span>Meus Módulos</span>
+                    </a>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+            
+            <div class="sidebar-footer">
+                {% if session.user_name %}
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">{{ session.user_name.split()[0] }}</div>
+                        <div class="user-role">{{ session.user_role|title }}</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Sair</span>
+                </a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <div class="page-header">
+                    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                    {% if self.page_subtitle() %}
+                    <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="top-bar-actions">
+                    {% if session.user_name %}
+                    <div class="user-menu">
+                        <span class="user-greeting">Olá, {{ session.user_name.split()[0] }}</span>
+                        <span class="user-role-badge">{{ session.user_role|title }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {% if category == 'success' %}
+                                    <i class="bi bi-check-circle me-2"></i>
+                                {% elif category == 'error' %}
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                {% elif category == 'warning' %}
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                {% else %}
+                                    <i class="bi bi-info-circle me-2"></i>
+                                {% endif %}
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            <div class="content-area">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    {% block modals %}{% endblock %}
 
     <!-- Bootstrap JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

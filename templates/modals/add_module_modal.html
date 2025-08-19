@@ -1,0 +1,35 @@
+<!-- Modal Adicionar Módulo -->
+<div class="modal fade" id="addModuleModal" tabindex="-1" aria-labelledby="addModuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModuleModalLabel">
+                    <i class="bi bi-folder-plus me-2"></i>Criar Novo Módulo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addModuleForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="nomeModulo" class="form-label">
+                            <i class="bi bi-folder me-1"></i>Nome do Módulo *
+                        </label>
+                        <input type="text" class="form-control" id="nomeModulo" placeholder="Ex: Matemática I, Português, História..." required>
+                        <div class="form-text">O módulo será criado e todos os alunos existentes serão automaticamente adicionados.</div>
+                        <div class="invalid-feedback">Por favor, informe o nome do módulo.</div>
+                    </div>
+                </form>
+                
+                <div id="mensagemModuloModal" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="criarModulo()">
+                    <i class="bi bi-plus-circle me-1"></i>Criar Módulo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

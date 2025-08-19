@@ -1,0 +1,73 @@
+<!-- Modal Adicionar Aluno -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStudentModalLabel">
+                    <i class="bi bi-person-plus me-2"></i>Adicionar Novo Aluno
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addStudentForm" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nomeNovo" class="form-label">
+                                <i class="bi bi-person me-1"></i>Nome Completo *
+                            </label>
+                            <input type="text" class="form-control" id="nomeNovo" placeholder="Digite o nome completo" required>
+                            <div class="invalid-feedback">Por favor, informe o nome do aluno.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="numeroMatriculaNovo" class="form-label">
+                                <i class="bi bi-card-text me-1"></i>Número da Matrícula *
+                            </label>
+                            <input type="text" class="form-control" id="numeroMatriculaNovo" placeholder="Ex: 2024001" required>
+                            <div class="invalid-feedback">Por favor, informe o número da matrícula.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="dataMatriculaNovo" class="form-label">
+                                <i class="bi bi-calendar me-1"></i>Data da Matrícula *
+                            </label>
+                            <input type="date" class="form-control" id="dataMatriculaNovo" required>
+                            <div class="invalid-feedback">Por favor, informe a data da matrícula.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="atestadosNovo" class="form-label">
+                                <i class="bi bi-file-medical me-1"></i>Número de Atestados
+                            </label>
+                            <input type="number" class="form-control" id="atestadosNovo" placeholder="0" min="0" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="encaminhamentoNovo" class="form-label">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Encaminhamento
+                        </label>
+                        <input type="text" class="form-control" id="encaminhamentoNovo" placeholder="Informações sobre encaminhamento">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="obsNovo" class="form-label">
+                            <i class="bi bi-chat-text me-1"></i>Observações
+                        </label>
+                        <textarea class="form-control" id="obsNovo" rows="3" placeholder="Observações adicionais sobre o aluno"></textarea>
+                    </div>
+                </form>
+                
+                <div id="mensagemModal" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="adicionarAluno()">
+                    <i class="bi bi-plus-circle me-1"></i>Cadastrar Aluno
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

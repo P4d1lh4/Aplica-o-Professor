@@ -1,9 +1,9 @@
 /* ==========================================================================
-   Sistema de Gestão de Alunos - JavaScript Principal
+   Period Grade System - JavaScript Principal
    ========================================================================== */
 
-// Variáveis globais
-let alunoIdAtual, moduleIdAtual;
+// Variáveis globais do sistema
+let currentUser = null;
 let isLoading = false;
 
 // Inicialização quando o DOM estiver carregado
@@ -13,21 +13,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Inicializar aplicação
 function initializeApp() {
+    // Configurar sidebar responsivo
+    initializeSidebar();
+    
     // Configurar tooltips do Bootstrap
+    initializeTooltips();
+    
+    // Configurar auto-dismiss para alerts
+    initializeAlerts();
+    
+    // Aplicar animações
+    animateElements();
+}
+
+// Inicializar tooltips
+function initializeTooltips() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+}
+
+// Inicializar sidebar responsivo
+function initializeSidebar() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
     
-    // Configurar animações
-    animateElements();
-    
-    // Configurar formulários
-    setupFormValidation();
-    
-    // Carregar dados iniciais
-    if (document.getElementById('tab-view-modules')) {
-        carregarModulos();
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('show');
+        });
+        
+        // Fechar sidebar ao clicar fora (mobile)
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
     }
 }
 
@@ -43,44 +67,31 @@ function animateElements() {
 
 // Configurar validação de formulários
 function setupFormValidation() {
-    const forms = document.querySelectorAll('form');
+    const forms = document.querySelectorAll('.needs-validation');
     forms.forEach(form => {
         form.addEventListener('submit', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             form.classList.add('was-validated');
         });
     });
 }
 
-// Função para exibir abas com animação
-function showTab(tabId) {
-    const tabs = document.querySelectorAll('.tab-pane');
-    const navLinks = document.querySelectorAll('.nav-link');
+// Inicializar recursos específicos da página
+function initializePageSpecificFeatures() {
+    const currentPage = window.location.pathname;
     
-    // Remover classes ativas
-    tabs.forEach(tab => {
-        tab.classList.remove('active', 'show');
-    });
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    // Ativar aba selecionada
-    const selectedTab = document.getElementById(tabId);
-    const selectedNavLink = document.querySelector(`[onclick="showTab('${tabId}')"]`);
-    
-    if (selectedTab) {
-        selectedTab.classList.add('active', 'show', 'fade-in');
-    }
-    if (selectedNavLink) {
-        selectedNavLink.classList.add('active');
-    }
-    
-    // Carregar dados específicos da aba
-    switch(tabId) {
-        case 'tab-view-modules':
-            carregarModulos();
+    switch(currentPage) {
+        case '/':
+            // Dashboard - já tem seu próprio script
+            break;
+        case '/alunos':
+            // Página de alunos - já tem seu próprio script
+            break;
+        case '/modulos':
+            // Página de módulos - já tem seu próprio script
             break;
     }
 }
@@ -104,25 +115,35 @@ function showMessage(elementId, message, type = 'success') {
     const element = document.getElementById(elementId);
     if (element) {
         const alertClass = `alert-${type}`;
+        const icon = getIconForType(type);
         element.innerHTML = `
             <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                <i class="bi bi-${getIconForType(type)} me-2"></i>
+                <i class="bi bi-${icon} me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;
         element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            const alert = element.querySelector('.alert');
+            if (alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 5000);
     }
 }
 
 function getIconForType(type) {
     const icons = {
-        'success': 'check-circle',
-        'danger': 'exclamation-triangle',
-        'warning': 'exclamation-triangle',
-        'info': 'info-circle'
+        'success': 'check-circle-fill',
+        'danger': 'exclamation-triangle-fill',
+        'warning': 'exclamation-triangle-fill',
+        'info': 'info-circle-fill'
     };
-    return icons[type] || 'info-circle';
+    return icons[type] || 'info-circle-fill';
 }
 
 function clearMessage(elementId) {
@@ -156,7 +177,18 @@ async function makeRequest(url, options = {}) {
     }
 }
 
-// Funções de alunos
+// Funções para modais
+function openAddStudentModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addStudentModal'));
+    modal.show();
+}
+
+function openAddModuleModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addModuleModal'));
+    modal.show();
+}
+
+// Funções de alunos (reutilizadas dos modais)
 async function adicionarAluno() {
     const alunoData = {
         nome: document.getElementById('nomeNovo').value.trim(),
@@ -169,11 +201,11 @@ async function adicionarAluno() {
 
     // Validação básica
     if (!alunoData.nome || !alunoData.numero_matricula || !alunoData.data_matricula) {
-        showMessage('mensagem', 'Por favor, preencha todos os campos obrigatórios.', 'warning');
+        showMessage('mensagemModal', 'Por favor, preencha todos os campos obrigatórios.', 'warning');
         return;
     }
 
-    clearMessage('mensagem');
+    clearMessage('mensagemModal');
     const submitBtn = document.querySelector('[onclick="adicionarAluno()"]');
     const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adicionando...';
@@ -185,159 +217,48 @@ async function adicionarAluno() {
     });
 
     if (result.error) {
-        showMessage('mensagem', result.error, 'danger');
+        showMessage('mensagemModal', result.error, 'danger');
     } else if (result.data.error) {
-        showMessage('mensagem', result.data.error, 'danger');
+        showMessage('mensagemModal', result.data.error, 'danger');
     } else {
-        showMessage('mensagem', result.data.message, 'success');
+        showMessage('mensagemModal', result.data.message, 'success');
         // Limpar formulário
         document.getElementById('nomeNovo').value = '';
         document.getElementById('numeroMatriculaNovo').value = '';
         document.getElementById('dataMatriculaNovo').value = '';
-        document.getElementById('atestadosNovo').value = '';
+        document.getElementById('atestadosNovo').value = '0';
         document.getElementById('encaminhamentoNovo').value = '';
         document.getElementById('obsNovo').value = '';
+        
+        // Fechar modal após sucesso
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addStudentModal'));
+            if (modal) modal.hide();
+            
+            // Recarregar página se estivermos na página de alunos
+            if (window.location.pathname === '/alunos') {
+                location.reload();
+            }
+        }, 2000);
     }
 
     submitBtn.innerHTML = originalText;
     submitBtn.disabled = false;
 }
 
-async function editarAluno() {
-    const numeroMatricula = document.getElementById('numeroMatriculaEditar').value.trim();
-    
-    if (!numeroMatricula) {
-        showMessage('mensagemEditar', 'Por favor, informe o número da matrícula.', 'warning');
-        return;
-    }
-
-    const alunoData = {
-        nome: document.getElementById('nomeEditar').value.trim(),
-        data_matricula: document.getElementById('dataMatriculaEditar').value,
-        atestados: parseInt(document.getElementById('atestadosEditar').value) || 0,
-        encaminhamento: document.getElementById('encaminhamentoEditar').value.trim(),
-        obs: document.getElementById('obsEditar').value.trim()
-    };
-
-    const result = await makeRequest(`/editar_aluno/${numeroMatricula}`, {
-        method: 'PUT',
-        body: JSON.stringify(alunoData)
-    });
-
-    if (result.error) {
-        showMessage('mensagemEditar', result.error, 'danger');
-    } else if (result.data.error) {
-        showMessage('mensagemEditar', result.data.error, 'danger');
-    } else {
-        showMessage('mensagemEditar', result.data.message, 'success');
-    }
-}
-
-async function excluirAluno() {
-    const numeroMatricula = document.getElementById('numeroMatriculaExcluir').value.trim();
-    
-    if (!numeroMatricula) {
-        showMessage('mensagemExcluir', 'Por favor, informe o número da matrícula.', 'warning');
-        return;
-    }
-
-    // Confirmação
-    if (!confirm('Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.')) {
-        return;
-    }
-
-    const result = await makeRequest(`/excluir_aluno/${numeroMatricula}`, {
-        method: 'DELETE'
-    });
-
-    if (result.error) {
-        showMessage('mensagemExcluir', result.error, 'danger');
-    } else if (result.data.error) {
-        showMessage('mensagemExcluir', result.data.error, 'danger');
-    } else {
-        showMessage('mensagemExcluir', result.data.message, 'success');
-        document.getElementById('numeroMatriculaExcluir').value = '';
-    }
-}
-
-async function pesquisarAluno() {
-    const numeroMatricula = document.getElementById('numeroMatriculaPesquisa').value.trim();
-    const nome = document.getElementById('nomePesquisa').value.trim();
-
-    if (!numeroMatricula && !nome) {
-        showMessage('resultadoPesquisa', 'Por favor, informe o número da matrícula ou o nome para pesquisar.', 'warning');
-        return;
-    }
-
-    showLoading('resultadoPesquisa');
-    
-    const url = `/pesquisar_aluno?numero_matricula=${encodeURIComponent(numeroMatricula)}&nome=${encodeURIComponent(nome)}`;
-    const result = await makeRequest(url);
-
-    const resultadoDiv = document.getElementById('resultadoPesquisa');
-    const listaAlunos = document.getElementById('listaAlunos');
-    
-    if (listaAlunos) {
-        listaAlunos.innerHTML = '';
-    }
-
-    if (result.error) {
-        showMessage('resultadoPesquisa', result.error, 'danger');
-    } else if (result.data.error) {
-        showMessage('resultadoPesquisa', result.data.error, 'info');
-    } else if (Array.isArray(result.data)) {
-        if (result.data.length === 1) {
-            const aluno = result.data[0];
-            resultadoDiv.innerHTML = `
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="bi bi-person-fill me-2"></i>Dados do Aluno</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p><strong>Nome:</strong> ${aluno.nome}</p>
-                                <p><strong>Matrícula:</strong> ${aluno.numero_matricula}</p>
-                                <p><strong>Data Matrícula:</strong> ${formatDate(aluno.data_matricula)}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>Atestados:</strong> <span class="badge bg-info">${aluno.atestados}</span></p>
-                                <p><strong>Encaminhamento:</strong> ${aluno.encaminhamento || 'Não informado'}</p>
-                                <p><strong>Observações:</strong> ${aluno.obs || 'Nenhuma observação'}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else if (result.data.length > 1) {
-            let html = '<div class="list-group">';
-            result.data.forEach(aluno => {
-                html += `
-                    <div class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">${aluno.nome}</h6>
-                            <small class="text-muted">Matrícula: ${aluno.numero_matricula}</small>
-                        </div>
-                        <a href="/detalhes_aluno/${aluno.id}" class="btn btn-outline-primary btn-sm mt-2" target="_blank">
-                            <i class="bi bi-eye me-1"></i>Ver Detalhes
-                        </a>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            resultadoDiv.innerHTML = html;
-        }
-    }
-}
-
-// Funções de módulos
+// Função para criar módulo (modal)
 async function criarModulo() {
     const nome = document.getElementById('nomeModulo').value.trim();
     
     if (!nome) {
-        showMessage('mensagemModulo', 'Por favor, informe o nome do módulo.', 'warning');
+        showMessage('mensagemModuloModal', 'Por favor, informe o nome do módulo.', 'warning');
         return;
     }
+
+    const submitBtn = document.querySelector('[onclick="criarModulo()"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando...';
+    submitBtn.disabled = true;
 
     const result = await makeRequest('/criar_modulo', {
         method: 'POST',
@@ -345,280 +266,242 @@ async function criarModulo() {
     });
 
     if (result.error) {
-        showMessage('mensagemModulo', result.error, 'danger');
+        showMessage('mensagemModuloModal', result.error, 'danger');
     } else if (result.data.error) {
-        showMessage('mensagemModulo', result.data.error, 'danger');
+        showMessage('mensagemModuloModal', result.data.error, 'danger');
     } else {
-        showMessage('mensagemModulo', result.data.message, 'success');
+        showMessage('mensagemModuloModal', result.data.message, 'success');
         document.getElementById('nomeModulo').value = '';
-        carregarModulos();
-    }
-}
-
-async function excluirModulo() {
-    const nome = document.getElementById('moduleNameExcluir').value.trim();
-    
-    if (!nome) {
-        showMessage('mensagemExcluirModulo', 'Por favor, informe o nome do módulo.', 'warning');
-        return;
-    }
-
-    if (!confirm('Tem certeza que deseja excluir este módulo? Esta ação não pode ser desfeita.')) {
-        return;
-    }
-
-    const result = await makeRequest('/excluir_modulo', {
-        method: 'POST',
-        body: JSON.stringify({ nome })
-    });
-
-    if (result.error) {
-        showMessage('mensagemExcluirModulo', result.error, 'danger');
-    } else if (result.data.error) {
-        showMessage('mensagemExcluirModulo', result.data.error, 'danger');
-    } else {
-        showMessage('mensagemExcluirModulo', result.data.message, 'success');
-        document.getElementById('moduleNameExcluir').value = '';
-        carregarModulos();
-    }
-}
-
-async function carregarModulos() {
-    const moduleList = document.getElementById('moduleList');
-    if (!moduleList) return;
-
-    showLoading('moduleList');
-
-    const result = await makeRequest('/listar_modulos');
-
-    if (result.error) {
-        moduleList.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                ${result.error}
-            </div>
-        `;
-        return;
-    }
-
-    if (result.data.length === 0) {
-        moduleList.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                Nenhum módulo cadastrado ainda.
-            </div>
-        `;
-        return;
-    }
-
-    let html = '<div class="row">';
-    result.data.forEach((modulo, index) => {
-        html += `
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="bi bi-folder me-2"></i>
-                            ${modulo.nome}
-                        </h6>
-                        <p class="card-text text-muted">ID: ${modulo.id}</p>
-                        <button onclick="verAlunosDoModulo(${modulo.id})" class="btn btn-primary btn-sm">
-                            <i class="bi bi-people me-1"></i>Ver Alunos
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    html += '</div>';
-    
-    moduleList.innerHTML = html;
-    
-    // Animar cards
-    setTimeout(() => {
-        const cards = moduleList.querySelectorAll('.card');
-        cards.forEach((card, index) => {
-            setTimeout(() => {
-                card.classList.add('fade-in');
-            }, index * 100);
-        });
-    }, 100);
-}
-
-async function verAlunosDoModulo(moduleId) {
-    const studentListContainer = document.getElementById('studentListContainer');
-    const studentList = document.getElementById('studentList');
-    
-    if (!studentList) return;
-
-    showLoading('studentList');
-    
-    const result = await makeRequest(`/ver_alunos_modulo/${moduleId}`);
-
-    if (result.error) {
-        studentList.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                ${result.error}
-            </div>
-        `;
-        return;
-    }
-
-    if (result.data.error) {
-        studentList.innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                ${result.data.error}
-            </div>
-        `;
-    } else {
-        let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
-        html += '<th>Nome</th><th>Matrícula</th><th>Faltas</th><th>Nota Final</th><th>Ações</th></tr></thead><tbody>';
         
-        result.data.forEach(aluno => {
-            const statusClass = aluno.nota_final >= 7 ? 'success' : aluno.nota_final >= 5 ? 'warning' : 'danger';
-            html += `
-                <tr>
-                    <td><strong>${aluno.nome}</strong></td>
-                    <td>${aluno.numero_matricula}</td>
-                    <td><span class="badge bg-secondary">${aluno.faltas}</span></td>
-                    <td><span class="badge bg-${statusClass}">${aluno.nota_final}</span></td>
-                    <td>
-                        <button onclick="carregarDetalhesAluno(${aluno.id}, ${moduleId})" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-eye me-1"></i>Detalhes
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-        html += '</tbody></table></div>';
-        studentList.innerHTML = html;
+        // Fechar modal após sucesso
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addModuleModal'));
+            if (modal) modal.hide();
+            
+            // Recarregar página se estivermos na página de módulos
+            if (window.location.pathname === '/modulos') {
+                if (typeof carregarModulosPage === 'function') {
+                    carregarModulosPage();
+                }
+            }
+        }, 2000);
     }
 
-    if (studentListContainer) {
-        studentListContainer.style.display = 'block';
-        studentListContainer.scrollIntoView({ behavior: 'smooth' });
-    }
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
 }
 
-// Funções de detalhes do aluno
-async function carregarDetalhesAluno(alunoId, moduleId) {
-    alunoIdAtual = alunoId;
-    moduleIdAtual = moduleId;
-
-    const result = await makeRequest(`/obter_dados_modulo_aluno/${alunoId}/${moduleId}`);
-
-    if (result.error) {
-        alert('Erro ao carregar dados: ' + result.error);
-        return;
-    }
-
-    if (result.data.error) {
-        alert(result.data.error);
-        return;
-    }
-
-    const data = result.data;
-    
-    // Atualizar informações na interface
-    const detalhes = {
-        'detalhesNome': data.nome,
-        'detalhesMatricula': data.numero_matricula,
-        'detalhesFaltas': data.faltas,
-        'detalhesNotaTutor': data.nota_tutor,
-        'detalhesNotaAvaliacaoRegular': data.nota_avaliacao_regular,
-        'detalhesNotaRecuperacao': data.nota_recuperacao,
-        'detalhesNotaFinal': data.nota_final
-    };
-
-    Object.entries(detalhes).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = value;
-        }
-    });
-
-    // Mostrar container de detalhes
-    const container = document.getElementById('studentDetailsContainer');
-    if (container) {
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth' });
-        showStudentTab('view-info');
-    }
+// Funções específicas da página de dashboard
+function initializeDashboard() {
+    // Funcionalidades específicas do dashboard serão adicionadas aqui
+    updateDashboardStats();
 }
 
-function showStudentTab(tabId) {
-    const tabs = document.querySelectorAll('.student-tab-content');
-    tabs.forEach(tab => tab.style.display = 'none');
-    
-    const selectedTab = document.getElementById(tabId);
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-    }
+function updateDashboardStats() {
+    // Atualizar estatísticas em tempo real se necessário
+    // Por enquanto, usamos os dados estáticos do backend
 }
 
-async function salvarEdicao() {
-    const dados = {};
-
-    // Obter valores dos campos
-    const campos = [
-        'editFaltas',
-        'editNotaTutor',
-        'editNotaAvaliacaoRegular',
-        'editNotaRecuperacao',
-        'editNotaFinal'
-    ];
-
-    campos.forEach(campo => {
-        const element = document.getElementById(campo);
-        if (element && element.value.trim() !== '') {
-            const key = campo.replace('edit', '').replace(/([A-Z])/g, '_$1').toLowerCase();
-            dados[key] = parseFloat(element.value) || 0;
-        }
-    });
-
-    if (Object.keys(dados).length === 0) {
-        alert('Por favor, preencha pelo menos um campo para atualizar.');
-        return;
-    }
-
-    const result = await makeRequest(`/editar_informacoes_modulo/${alunoIdAtual}/${moduleIdAtual}`, {
-        method: 'PUT',
-        body: JSON.stringify(dados)
-    });
-
-    if (result.error) {
-        alert('Erro ao salvar: ' + result.error);
-    } else if (result.data.error) {
-        alert(result.data.error);
-    } else {
-        alert(result.data.message);
-        // Recarregar detalhes
-        await carregarDetalhesAluno(alunoIdAtual, moduleIdAtual);
-        showStudentTab('view-info');
-        // Limpar campos de edição
-        campos.forEach(campo => {
-            const element = document.getElementById(campo);
-            if (element) element.value = '';
-        });
-    }
+// Funções específicas da página de alunos
+function initializeAlunosPage() {
+    // Funcionalidades específicas da página de alunos
 }
 
-// Utilitários
+// Funções específicas da página de módulos
+function initializeModulosPage() {
+    // Funcionalidades específicas da página de módulos
+}
+
+// Funções auxiliares para formatação
 function formatDate(dateString) {
     if (!dateString) return 'Não informado';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
 }
 
+function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return 'Não informado';
+    const date = new Date(dateTimeString);
+    return date.toLocaleString('pt-BR');
+}
+
+function formatNumber(number, decimals = 1) {
+    return Number(number).toFixed(decimals);
+}
+
+// Funções de navegação
+function navigateTo(url) {
+    window.location.href = url;
+}
+
+function goBack() {
+    window.history.back();
+}
+
+// Funções de exportação e impressão
+function exportData(data, filename, type = 'json') {
+    let content, mimeType;
+    
+    switch(type) {
+        case 'json':
+            content = JSON.stringify(data, null, 2);
+            mimeType = 'application/json';
+            filename += '.json';
+            break;
+        case 'csv':
+            content = convertToCSV(data);
+            mimeType = 'text/csv';
+            filename += '.csv';
+            break;
+        default:
+            return;
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+function convertToCSV(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+    ].join('\n');
+    
+    return csvContent;
+}
+
+// Funções de validação
+function validateEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+function validatePhone(phone) {
+    const regex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
+    return regex.test(phone);
+}
+
+function validateCPF(cpf) {
+    cpf = cpf.replace(/[^\d]+/g,'');
+    if(cpf == '') return false;
+    if (cpf.length != 11 || 
+        cpf == "00000000000" || 
+        cpf == "11111111111" || 
+        cpf == "22222222222" || 
+        cpf == "33333333333" || 
+        cpf == "44444444444" || 
+        cpf == "55555555555" || 
+        cpf == "66666666666" || 
+        cpf == "77777777777" || 
+        cpf == "88888888888" || 
+        cpf == "99999999999")
+        return false;
+    
+    let add = 0;
+    for (let i=0; i < 9; i++)
+        add += parseInt(cpf.charAt(i)) * (10 - i);
+    let rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11)
+        rev = 0;
+    if (rev != parseInt(cpf.charAt(9)))
+        return false;
+    
+    add = 0;
+    for (let i = 0; i < 10; i++)
+        add += parseInt(cpf.charAt(i)) * (11 - i);
+    rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11)
+        rev = 0;
+    if (rev != parseInt(cpf.charAt(10)))
+        return false;
+    return true;
+}
+
+// Funções de máscara para inputs
+function applyMasks() {
+    // Aplicar máscaras de telefone, CPF, etc. se necessário
+    const phoneInputs = document.querySelectorAll('input[data-mask="phone"]');
+    phoneInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                value = value.replace(/(\d{2})(\d)/, '($1) $2');
+                value = value.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+            }
+            e.target.value = value;
+        });
+    });
+}
+
+// Tratamento de erros globais
+window.addEventListener('error', function(event) {
+    console.error('Erro global capturado:', event.error);
+    // Aqui você pode implementar um sistema de logs ou notificação de erros
+});
+
 // Adicionar eventos de teclado para melhor UX
 document.addEventListener('keydown', function(e) {
-    // ESC para fechar modais/detalhes
+    // ESC para fechar modais
     if (e.key === 'Escape') {
-        const container = document.getElementById('studentDetailsContainer');
-        if (container && container.style.display === 'block') {
-            container.style.display = 'none';
-        }
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modal => {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        });
+    }
+    
+    // Ctrl+S para salvar (prevenir comportamento padrão)
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        // Aqui você pode implementar lógica de auto-save se necessário
     }
 });
+
+// Funções de acessibilidade
+function initializeAccessibility() {
+    // Melhorar navegação por teclado
+    const focusableElements = document.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    
+    focusableElements.forEach(element => {
+        element.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && element.tagName === 'BUTTON') {
+                element.click();
+            }
+        });
+    });
+}
+
+// Performance monitoring (simples)
+function measurePerformance() {
+    if ('performance' in window) {
+        window.addEventListener('load', function() {
+            const loadTime = performance.now();
+            console.log(`Página carregada em ${loadTime.toFixed(2)}ms`);
+        });
+    }
+}
+
+// Inicializar recursos adicionais quando apropriado
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        applyMasks();
+        initializeAccessibility();
+        measurePerformance();
+    });
+} else {
+    applyMasks();
+    initializeAccessibility();
+    measurePerformance();
+}

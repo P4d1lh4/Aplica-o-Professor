@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Period Grade System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral do sistema{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    {% if user_role == 'admin' %}
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_users }}</div>
+            <div class="stat-label">Total de Usuários</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-calendar-range-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_periods }}</div>
+            <div class="stat-label">Períodos Acadêmicos</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_students }}</div>
+            <div class="stat-label">Total de Estudantes</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-book-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_modules }}</div>
+            <div class="stat-label">Total de Módulos</div>
+        </div>
+        
+    {% elif user_role == 'coordinator' %}
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.my_periods }}</div>
+            <div class="stat-label">Meus Períodos</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.my_students }}</div>
+            <div class="stat-label">Meus Estudantes</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-book-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.my_modules }}</div>
+            <div class="stat-label">Módulos Supervisionados</div>
+        </div>
+        
+    {% elif user_role == 'professor' %}
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-book-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.my_modules }}</div>
+            <div class="stat-label">Meus Módulos</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.my_students }}</div>
+            <div class="stat-label">Meus Estudantes</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="stat-number">{{ stats.approved_students }}</div>
+            <div class="stat-label">Estudantes Aprovados</div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Ações Rápidas</h2>
+    </div>
+    <div class="card-body">
+        <div class="quick-actions">
+            {% if user_role == 'admin' %}
+                <a href="{{ url_for('manage_users') }}" class="quick-action">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-person-plus-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Gerenciar Usuários</div>
+                    <div class="quick-action-desc">Criar e editar usuários do sistema</div>
+                </a>
+                
+                <a href="{{ url_for('manage_periods') }}" class="quick-action">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-calendar-plus-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Gerenciar Períodos</div>
+                    <div class="quick-action-desc">Criar e configurar períodos acadêmicos</div>
+                </a>
+                
+                <div class="quick-action" onclick="showSystemInfo()">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-info-circle-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Informações do Sistema</div>
+                    <div class="quick-action-desc">Ver relatórios e estatísticas</div>
+                </div>
+                
+            {% elif user_role == 'coordinator' %}
+                <a href="{{ url_for('coordinator_periods') }}" class="quick-action">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Meus Períodos</div>
+                    <div class="quick-action-desc">Gerenciar períodos sob minha coordenação</div>
+                </a>
+                
+                <div class="quick-action" onclick="showAddStudentModal()">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-person-plus-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Adicionar Estudante</div>
+                    <div class="quick-action-desc">Cadastrar novo estudante</div>
+                </div>
+                
+                <div class="quick-action" onclick="showReports()">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="quick-action-title">Relatórios</div>
+                    <div class="quick-action-desc">Ver relatórios de desempenho</div>
+                </div>
+                
+            {% elif user_role == 'professor' %}
+                <a href="{{ url_for('professor_modules') }}" class="quick-action">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-book-fill"></i>
+                    </div>
+                    <div class="quick-action-title">Meus Módulos</div>
+                    <div class="quick-action-desc">Gerenciar módulos e turmas</div>
+                </a>
+                
+                <div class="quick-action" onclick="showGradeEntry()">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                    <div class="quick-action-title">Lançar Notas</div>
+                    <div class="quick-action-desc">Inserir e editar notas</div>
+                </div>
+                
+                <div class="quick-action" onclick="showAttendance()">
+                    <div class="quick-action-icon">
+                        <i class="bi bi-calendar-x"></i>
+                    </div>
+                    <div class="quick-action-title">Registrar Faltas</div>
+                    <div class="quick-action-desc">Controlar frequência dos estudantes</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Atividade Recente</h2>
+    </div>
+    <div class="card-body">
+        <div id="recentActivity" class="loading">
+            <div class="spinner"></div>
+            <span class="ms-2">Carregando atividades...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome Message for New Users -->
+{% if (user_role == 'admin' and stats.total_users <= 4) or (user_role == 'coordinator' and stats.my_students == 0) or (user_role == 'professor' and stats.my_modules == 0) %}
+<div class="card mt-4">
+    <div class="card-body">
+        <div style="text-align: center; padding: 2rem;">
+            <i class="bi bi-lightbulb" style="font-size: 3rem; color: var(--color-gray-400); margin-bottom: 1rem;"></i>
+            <h3>Bem-vindo ao Period Grade System!</h3>
+            <p style="color: var(--color-gray-600); margin-bottom: 2rem;">
+                {% if user_role == 'admin' %}
+                    Como administrador, você pode começar criando usuários e períodos acadêmicos.
+                {% elif user_role == 'coordinator' %}
+                    Como coordenador, você pode gerenciar estudantes e módulos em seus períodos.
+                {% elif user_role == 'professor' %}
+                    Como professor, você pode gerenciar suas turmas e lançar notas.
+                {% endif %}
+            </p>
+            {% if user_role == 'admin' %}
+                <a href="{{ url_for('manage_users') }}" class="btn btn-primary me-2">
+                    <i class="bi bi-person-plus me-1"></i>Criar Primeiro Usuário
+                </a>
+                <a href="{{ url_for('manage_periods') }}" class="btn btn-outline">
+                    <i class="bi bi-calendar-plus me-1"></i>Criar Período
+                </a>
+            {% elif user_role == 'coordinator' %}
+                <a href="{{ url_for('coordinator_periods') }}" class="btn btn-primary">
+                    <i class="bi bi-calendar-check me-1"></i>Ver Meus Períodos
+                </a>
+            {% elif user_role == 'professor' %}
+                <a href="{{ url_for('professor_modules') }}" class="btn btn-primary">
+                    <i class="bi bi-book me-1"></i>Ver Meus Módulos
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Simulate loading recent activity
+    setTimeout(() => {
+        const activityElement = document.getElementById('recentActivity');
+        if (activityElement) {
+            const activities = [
+                { icon: 'bi-box-arrow-in-right', text: 'Login realizado com sucesso', time: 'Agora' },
+                { icon: 'bi-eye', text: 'Dashboard acessado', time: 'Há 1 minuto' },
+                { icon: 'bi-shield-check', text: 'Sistema inicializado', time: 'Há 5 minutos' }
+            ];
+            
+            let html = '<div class="activity-list">';
+            activities.forEach(activity => {
+                html += `
+                    <div class="activity-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--color-gray-100);">
+                        <i class="bi ${activity.icon}" style="color: var(--color-gray-500);"></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.875rem; color: var(--color-gray-900);">${activity.text}</div>
+                            <div style="font-size: 0.75rem; color: var(--color-gray-500);">${activity.time}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            activityElement.innerHTML = html;
+        }
+    }, 1000);
+});
+
+// Quick action functions
+function showSystemInfo() {
+    alert('Funcionalidade de informações do sistema será implementada em breve!');
+}
+
+function showAddStudentModal() {
+    alert('Funcionalidade de adição de estudante será implementada em breve!');
+}
+
+function showReports() {
+    alert('Funcionalidade de relatórios será implementada em breve!');
+}
+
+function showGradeEntry() {
+    alert('Acesse "Meus Módulos" para lançar notas!');
+}
+
+function showAttendance() {
+    alert('Acesse "Meus Módulos" para registrar faltas!');
+}
+</script>
+{% endblock %}
