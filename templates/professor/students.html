@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Alunos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Gerenciar Alunos</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                    <i class="fas fa-plus"></i> Adicionar Aluno
+                </button>
+            </div>
+
+            <!-- Lista de Alunos -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Meus Alunos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Matrícula</th>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Período</th>
+                                    <th>Data Matrícula</th>
+                                    <th>Certificados Médicos</th>
+                                    <th>Faltas</th>
+                                    <th>Observações</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dados carregados via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar/Editar Aluno -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentModalTitle">Adicionar Novo Aluno</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="studentForm">
+                    <input type="hidden" id="studentId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="studentNumber" class="form-label">Número de Matrícula *</label>
+                                <input type="text" class="form-control" id="studentNumber" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fullName" class="form-label">Nome Completo *</label>
+                                <input type="text" class="form-control" id="fullName" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="academicPeriodId" class="form-label">Período Acadêmico *</label>
+                                <select class="form-select" id="academicPeriodId" required>
+                                    <option value="">Selecione um período</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="enrollmentDate" class="form-label">Data de Matrícula *</label>
+                                <input type="date" class="form-control" id="enrollmentDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="medicalCertificates" class="form-label">Certificados Médicos</label>
+                                <input type="number" class="form-control" id="medicalCertificates" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="referralInfo" class="form-label">Informações de Encaminhamento</label>
+                        <textarea class="form-control" id="referralInfo" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="observations" class="form-label">Observações</label>
+                        <textarea class="form-control" id="observations" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveStudent()">Salvar Aluno</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let editingStudentId = null;
+
+// Carregar dados ao iniciar a página
+document.addEventListener('DOMContentLoaded', function() {
+    loadStudents();
+    loadPeriods();
+});
+
+// Carregar lista de alunos
+function loadStudents() {
+    console.log('Carregando lista de alunos...');
+    fetch('/api/professor/students')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Dados dos alunos recebidos:', data);
+            const tbody = document.querySelector('#studentsTable tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.student_number}</td>
+                    <td>${student.full_name}</td>
+                    <td>${student.email || '-'}</td>
+                    <td>${student.period_name}</td>
+                    <td>${formatDate(student.enrollment_date)}</td>
+                    <td>${student.medical_certificates}</td>
+                    <td>
+                        <span class="badge bg-warning" id="absences-${student.id}">0</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-1" onclick="updateAbsences(${student.id})">
+                            <i class="fas fa-calendar-minus"></i>
+                        </button>
+                    </td>
+                    <td>${student.observations || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editStudent(${student.id})" title="Editar aluno">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-sm btn-outline-info ms-1" onclick="viewStudentDetails(${student.id})" title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                
+                // Carregar faltas do aluno
+                loadStudentAbsences(student.id);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar alunos:', error);
+            showAlert('Erro ao carregar alunos', 'danger');
+        });
+}
+
+// Carregar faltas de um aluno específico
+function loadStudentAbsences(studentId) {
+    fetch(`/api/professor/students/${studentId}/absences`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.absences !== undefined) {
+                document.getElementById(`absences-${studentId}`).textContent = data.absences;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar faltas:', error);
+        });
+}
+
+// Carregar períodos disponíveis
+function loadPeriods() {
+    console.log('Carregando períodos disponíveis...');
+    fetch('/api/professor/periods')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Períodos recebidos:', data);
+            const select = document.getElementById('academicPeriodId');
+            select.innerHTML = '<option value="">Selecione um período</option>';
+            
+            data.forEach(period => {
+                const option = document.createElement('option');
+                option.value = period.id;
+                option.textContent = period.name;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar períodos:', error);
+        });
+}
+
+// Mostrar modal para adicionar aluno
+function showAddStudentModal() {
+    editingStudentId = null;
+    document.getElementById('studentModalTitle').textContent = 'Adicionar Novo Aluno';
+    document.getElementById('studentForm').reset();
+    document.getElementById('studentId').value = '';
+}
+
+// Editar aluno
+function editStudent(studentId) {
+    console.log('Função editStudent chamada para aluno ID:', studentId);
+    editingStudentId = studentId;
+    document.getElementById('studentModalTitle').textContent = 'Editar Aluno';
+    
+    // Buscar dados do aluno
+    fetch(`/api/professor/students/${studentId}`)
+        .then(response => response.json())
+        .then(student => {
+            document.getElementById('studentId').value = student.id;
+            document.getElementById('studentNumber').value = student.student_number;
+            document.getElementById('fullName').value = student.full_name;
+            document.getElementById('email').value = student.email || '';
+            document.getElementById('academicPeriodId').value = student.academic_period_id;
+            document.getElementById('enrollmentDate').value = student.enrollment_date;
+            document.getElementById('medicalCertificates').value = student.medical_certificates;
+            document.getElementById('referralInfo').value = student.referral_info || '';
+            document.getElementById('observations').value = student.observations || '';
+            
+            // Abrir modal
+            const modal = new bootstrap.Modal(document.getElementById('addStudentModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados do aluno:', error);
+            showAlert('Erro ao carregar dados do aluno', 'danger');
+        });
+}
+
+// Salvar aluno (adicionar ou editar)
+function saveStudent() {
+    console.log('Iniciando salvamento de aluno...');
+    const formData = {
+        student_number: document.getElementById('studentNumber').value,
+        full_name: document.getElementById('fullName').value,
+        email: document.getElementById('email').value,
+        academic_period_id: parseInt(document.getElementById('academicPeriodId').value),
+        enrollment_date: document.getElementById('enrollmentDate').value,
+        medical_certificates: parseInt(document.getElementById('medicalCertificates').value),
+        referral_info: document.getElementById('referralInfo').value,
+        observations: document.getElementById('observations').value
+    };
+
+    console.log('Dados do formulário:', formData);
+
+    // Validação
+    if (!formData.student_number || !formData.full_name || !formData.academic_period_id || !formData.enrollment_date) {
+        console.log('Validação falhou - campos obrigatórios faltando');
+        showAlert('Por favor, preencha todos os campos obrigatórios', 'warning');
+        return;
+    }
+
+    const url = editingStudentId ? 
+        `/api/professor/students/${editingStudentId}` : 
+        '/api/professor/students';
+    
+    const method = editingStudentId ? 'PUT' : 'POST';
+
+    console.log('Enviando requisição:', method, url);
+    console.log('Payload:', JSON.stringify(formData));
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        console.log('Resposta recebida:', response.status, response.statusText);
+        return response.json().then(data => {
+            console.log('Dados da resposta:', data);
+            if (response.ok) {
+                console.log('Sucesso no salvamento!');
+                showAlert(data.message, 'success');
+                document.getElementById('studentForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+                loadStudents();
+            } else {
+                console.log('Erro no salvamento:', data.error);
+                showAlert(data.error, 'danger');
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao salvar aluno:', error);
+        showAlert('Erro ao salvar aluno', 'danger');
+    });
+}
+
+// Função para formatar data
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+}
+
+// Função para mostrar alertas
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Função para atualizar faltas
+function updateAbsences(studentId) {
+    const currentAbsences = parseInt(document.getElementById(`absences-${studentId}`).textContent);
+    const newAbsences = prompt(`Atualizar faltas para o aluno (atual: ${currentAbsences}):`, currentAbsences);
+    
+    if (newAbsences !== null && !isNaN(newAbsences)) {
+        const absences = parseInt(newAbsences);
+        
+        fetch(`/api/professor/students/${studentId}/absences`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ absences: absences })
+        })
+        .then(response => {
+            return response.json().then(data => {
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    document.getElementById(`absences-${studentId}`).textContent = absences;
+                } else {
+                    showAlert(data.error, 'danger');
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar faltas:', error);
+            showAlert('Erro ao atualizar faltas', 'danger');
+        });
+    }
+}
+
+// Função para visualizar detalhes do aluno
+function viewStudentDetails(studentId) {
+    console.log('Visualizando detalhes do aluno ID:', studentId);
+    
+    fetch(`/api/professor/students/${studentId}`)
+        .then(response => response.json())
+        .then(student => {
+            const details = `
+                <strong>Detalhes do Aluno:</strong><br>
+                <strong>Matrícula:</strong> ${student.student_number}<br>
+                <strong>Nome:</strong> ${student.full_name}<br>
+                <strong>Email:</strong> ${student.email || 'Não informado'}<br>
+                <strong>Período:</strong> ${student.period_name}<br>
+                <strong>Data de Matrícula:</strong> ${formatDate(student.enrollment_date)}<br>
+                <strong>Certificados Médicos:</strong> ${student.medical_certificates}<br>
+                <strong>Informações de Encaminhamento:</strong> ${student.referral_info || 'Não informado'}<br>
+                <strong>Observações:</strong> ${student.observations || 'Não informado'}
+            `;
+            
+            showAlert(details, 'info');
+        })
+        .catch(error => {
+            console.error('Erro ao carregar detalhes do aluno:', error);
+            showAlert('Erro ao carregar detalhes do aluno', 'danger');
+        });
+}
+
+// Event listener para o modal
+document.getElementById('addStudentModal').addEventListener('show.bs.modal', function (event) {
+    if (!editingStudentId) {
+        showAddStudentModal();
+    }
+});
+</script>
+{% endblock %}

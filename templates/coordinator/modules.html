@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Módulos - Período {{ period_id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Gerenciar Módulos - Período {{ period_id }}</h2>
+                <div>
+                    <button class="btn btn-secondary me-2" onclick="testProfessorsAPI()">
+                        <i class="fas fa-test"></i> Testar API
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModuleModal">
+                        <i class="fas fa-plus"></i> Adicionar Módulo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de Módulos -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Módulos do Período</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="modulesTable">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome</th>
+                                    <th>Professor</th>
+                                    <th>Créditos</th>
+                                    <th>Máx. Faltas</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dados carregados via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Módulo -->
+<div class="modal fade" id="addModuleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Novo Módulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addModuleForm">
+                    <div class="mb-3">
+                        <label for="moduleCode" class="form-label">Código do Módulo *</label>
+                        <input type="text" class="form-control" id="moduleCode" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="moduleName" class="form-label">Nome do Módulo *</label>
+                        <input type="text" class="form-control" id="moduleName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="professorId" class="form-label">Professor *</label>
+                        <select class="form-select" id="professorId" required>
+                            <option value="">Selecione um professor</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="credits" class="form-label">Créditos</label>
+                                <input type="number" class="form-control" id="credits" value="4" min="1" max="10">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="maxAbsences" class="form-label">Máximo de Faltas</label>
+                                <input type="number" class="form-control" id="maxAbsences" value="10" min="1" max="30">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="addModule()">Adicionar Módulo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmButton">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let periodId = {{ period_id }};
+
+// Carregar módulos ao iniciar a página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Página carregada, periodId:', periodId);
+    loadModules();
+    loadProfessors();
+});
+
+// Carregar lista de módulos
+function loadModules() {
+    fetch(`/api/coordinator/periods/${periodId}/modules`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#modulesTable tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(module => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${module.code}</td>
+                    <td>${module.name}</td>
+                    <td>${module.professor_name}</td>
+                    <td>${module.credits}</td>
+                    <td>${module.max_absences}</td>
+                    <td>
+                        <span class="badge ${module.is_active ? 'bg-success' : 'bg-secondary'}">
+                            ${module.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar módulos:', error);
+            showAlert('Erro ao carregar módulos', 'danger');
+        });
+}
+
+// Carregar lista de professores
+function loadProfessors() {
+    console.log('Carregando professores...'); // Debug log
+    
+    fetch('/api/professors')
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados dos professores:', data);
+            populateProfessorsDropdown(data);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar professores:', error);
+            showAlert(`Erro ao carregar professores: ${error.message}`, 'danger');
+        });
+}
+
+function populateProfessorsDropdown(data) {
+    const select = document.getElementById('professorId');
+    select.innerHTML = '<option value="">Selecione um professor</option>';
+    
+    if (data && data.length > 0) {
+        data.forEach(professor => {
+            const option = document.createElement('option');
+            option.value = professor.id;
+            option.textContent = professor.full_name;
+            select.appendChild(option);
+        });
+        console.log('Professores carregados no dropdown:', data.length); // Debug log
+    } else {
+        console.log('Nenhum professor encontrado'); // Debug log
+        showAlert('Nenhum professor encontrado no sistema', 'warning');
+    }
+}
+
+// Adicionar novo módulo
+function addModule() {
+    const formData = {
+        code: document.getElementById('moduleCode').value,
+        name: document.getElementById('moduleName').value,
+        professor_id: parseInt(document.getElementById('professorId').value),
+        credits: parseInt(document.getElementById('credits').value),
+        max_absences: parseInt(document.getElementById('maxAbsences').value)
+    };
+
+    // Validação
+    if (!formData.code || !formData.name || !formData.professor_id) {
+        showAlert('Por favor, preencha todos os campos obrigatórios', 'warning');
+        return;
+    }
+
+    fetch(`/api/coordinator/periods/${periodId}/modules`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        return response.json().then(data => {
+            if (response.ok) {
+                showAlert(data.message, 'success');
+                document.getElementById('addModuleForm').reset();
+                bootstrap.Modal.getInstance(document.getElementById('addModuleModal')).hide();
+                loadModules();
+            } else {
+                showAlert(data.error, 'danger');
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao adicionar módulo:', error);
+        showAlert('Erro ao adicionar módulo', 'danger');
+    });
+}
+
+// Função para testar a API de professores
+function testProfessorsAPI() {
+    console.log('Testando API de professores...');
+    
+    // Testar API alternativa
+    fetch('/api/professors')
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados da API:', data);
+            showAlert(`API funcionando! Encontrados ${data.length} professores`, 'success');
+        })
+        .catch(error => {
+            console.error('Erro na API:', error);
+            showAlert(`Erro na API: ${error.message}`, 'danger');
+        });
+}
+
+// Função para mostrar alertas
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

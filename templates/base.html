@@ -70,6 +70,10 @@
                         <i class="bi bi-book"></i>
                         <span>Meus Módulos</span>
                     </a>
+                    <a href="{{ url_for('professor_students') }}" class="menu-item {% if request.endpoint == 'professor_students' %}active{% endif %}">
+                        <i class="bi bi-people"></i>
+                        <span>Gerenciar Alunos</span>
+                    </a>
                 </div>
                 {% endif %}
                 {% endif %}

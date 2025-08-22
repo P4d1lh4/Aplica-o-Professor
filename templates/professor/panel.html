@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Painel do Professor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Painel do Professor</h1>
+            <p class="lead">Bem-vindo, {{ session.user_name }}!</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Estatísticas -->
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Módulos</h5>
+                    <h2 class="text-primary">{{ stats.my_modules }}</h2>
+                    <p class="card-text">Módulos ativos</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Alunos</h5>
+                    <h2 class="text-success">{{ stats.my_students }}</h2>
+                    <p class="card-text">Alunos matriculados</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Aprovados</h5>
+                    <h2 class="text-info">{{ stats.approved_students }}</h2>
+                    <p class="card-text">Alunos aprovados</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Ações Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('professor_modules') }}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-book"></i> Gerenciar Módulos
+                                </a>
+                                <small class="text-muted">Visualizar e gerenciar seus módulos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('professor_students') }}" class="btn btn-success btn-lg">
+                                    <i class="fas fa-users"></i> Gerenciar Alunos
+                                </a>
+                                <small class="text-muted">Adicionar e editar informações dos alunos</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

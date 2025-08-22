@@ -140,10 +140,17 @@ def popular_dados_exemplo(conn):
         ('prof2', generate_password_hash('prof123'), 'professor', 'Ana Costa Professora', 'ana@escola.com'),
     ]
     
+    print("Inserindo usuários de exemplo...")  # Debug log
+    
     cursor.executemany('''
         INSERT OR IGNORE INTO Users (username, password_hash, role, full_name, email) 
         VALUES (?, ?, ?, ?, ?)
     ''', usuarios)
+    
+    # Verificar se os professores foram inseridos
+    cursor.execute('SELECT id, username, full_name, role FROM Users WHERE role = "professor"')
+    professores_inseridos = cursor.fetchall()
+    print(f"Professores inseridos: {professores_inseridos}")  # Debug log
     
     # Períodos acadêmicos
     periodos = [
@@ -380,6 +387,11 @@ def coordinator_periods():
 def manage_period(period_id):
     return render_template('coordinator/manage_period.html', period_id=period_id)
 
+@app.route('/coordinator/period/<int:period_id>/modules')
+@role_required(['coordinator'])
+def manage_period_modules(period_id):
+    return render_template('coordinator/modules_fixed.html', period_id=period_id)
+
 # Rotas do Professor
 @app.route('/professor')
 @role_required(['professor'])
@@ -390,6 +402,170 @@ def professor_panel():
 @role_required(['professor'])
 def professor_modules():
     return render_template('professor/modules.html')
+
+@app.route('/professor/students')
+@role_required(['professor'])
+def professor_students():
+    return render_template('professor/students.html')
+
+@app.route('/modulos')
+@login_required
+def modulos():
+    """Página de gerenciamento de módulos"""
+    return render_template('modulos.html')
+
+@app.route('/criar_modulo', methods=['POST'])
+@login_required
+def criar_modulo():
+    """API para criar novo módulo"""
+    data = request.get_json()
+    nome = data.get('nome', '').strip()
+    
+    if not nome:
+        return jsonify({'error': 'Nome do módulo é obrigatório'}), 400
+    
+    user_id = session.get('user_id')
+    user_role = session.get('user_role')
+    
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    try:
+        if user_role == 'coordinator':
+            # Para coordenadores, criar módulo nos seus períodos
+            cursor.execute('SELECT id FROM AcademicPeriods WHERE coordinator_id = ? AND is_active = 1 LIMIT 1', (user_id,))
+            period = cursor.fetchone()
+            
+            if not period:
+                conn.close()
+                return jsonify({'error': 'Nenhum período ativo encontrado para este coordenador'}), 400
+            
+            # Gerar código automático para o módulo
+            import time
+            codigo = f"MOD{int(time.time() % 10000)}"
+            
+            cursor.execute('''
+                INSERT INTO Modules (name, code, professor_id, academic_period_id, credits, max_absences) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (nome, codigo, user_id, period['id'], 4, 10))
+            
+        elif user_role == 'professor':
+            # Para professores, criar módulo nos períodos onde eles lecionam
+            cursor.execute('''
+                SELECT DISTINCT ap.id FROM AcademicPeriods ap
+                JOIN Modules m ON ap.id = m.academic_period_id
+                WHERE m.professor_id = ? AND ap.is_active = 1 LIMIT 1
+            ''', (user_id,))
+            period = cursor.fetchone()
+            
+            if not period:
+                # Se não tem módulos, pegar o primeiro período ativo
+                cursor.execute('SELECT id FROM AcademicPeriods WHERE is_active = 1 LIMIT 1')
+                period = cursor.fetchone()
+                
+                if not period:
+                    conn.close()
+                    return jsonify({'error': 'Nenhum período ativo encontrado'}), 400
+            
+            # Gerar código automático para o módulo
+            import time
+            codigo = f"MOD{int(time.time() % 10000)}"
+            
+            cursor.execute('''
+                INSERT INTO Modules (name, code, professor_id, academic_period_id, credits, max_absences) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (nome, codigo, user_id, period['id'], 4, 10))
+            
+        else:
+            conn.close()
+            return jsonify({'error': 'Usuário não tem permissão para criar módulos'}), 403
+        
+        module_id = cursor.lastrowid
+        
+        # Se houver alunos no período, matriculá-los automaticamente no novo módulo
+        cursor.execute('SELECT id FROM Students WHERE academic_period_id = ? AND is_active = 1', (period['id'],))
+        students = cursor.fetchall()
+        
+        for student in students:
+            cursor.execute('''
+                INSERT OR IGNORE INTO Enrollments (student_id, module_id) 
+                VALUES (?, ?)
+            ''', (student['id'], module_id))
+            
+            # Criar registro de notas vazio
+            cursor.execute('SELECT id FROM Enrollments WHERE student_id = ? AND module_id = ?', (student['id'], module_id))
+            enrollment = cursor.fetchone()
+            
+            if enrollment:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO Grades (enrollment_id, tutor_grade, regular_exam_grade, makeup_exam_grade, final_grade, absences) 
+                    VALUES (?, 0.0, 0.0, 0.0, 0.0, 0)
+                ''', (enrollment['id'],))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': f'Módulo "{nome}" criado com sucesso! {len(students)} alunos foram matriculados automaticamente.',
+            'module_id': module_id
+        })
+        
+    except sqlite3.IntegrityError as e:
+        conn.close()
+        return jsonify({'error': 'Erro ao criar módulo. Código pode já existir.'}), 400
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': f'Erro interno: {str(e)}'}), 500
+
+@app.route('/api/modulos')
+@login_required
+def api_modulos():
+    """API para listar módulos do usuário"""
+    user_id = session.get('user_id')
+    user_role = session.get('user_role')
+    
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    if user_role == 'coordinator':
+        # Coordenador vê módulos dos seus períodos
+        cursor.execute('''
+            SELECT m.*, u.full_name as professor_name, ap.name as period_name
+            FROM Modules m
+            JOIN Users u ON m.professor_id = u.id
+            JOIN AcademicPeriods ap ON m.academic_period_id = ap.id
+            WHERE ap.coordinator_id = ?
+            ORDER BY m.created_at DESC
+        ''', (user_id,))
+    elif user_role == 'professor':
+        # Professor vê seus próprios módulos
+        cursor.execute('''
+            SELECT m.*, u.full_name as professor_name, ap.name as period_name
+            FROM Modules m
+            JOIN Users u ON m.professor_id = u.id
+            JOIN AcademicPeriods ap ON m.academic_period_id = ap.id
+            WHERE m.professor_id = ?
+            ORDER BY m.created_at DESC
+        ''', (user_id,))
+    else:
+        # Admin vê todos os módulos
+        cursor.execute('''
+            SELECT m.*, u.full_name as professor_name, ap.name as period_name
+            FROM Modules m
+            JOIN Users u ON m.professor_id = u.id
+            JOIN AcademicPeriods ap ON m.academic_period_id = ap.id
+            ORDER BY m.created_at DESC
+        ''')
+    
+    modules = [dict(row) for row in cursor.fetchall()]
+    
+    # Adicionar contagem de alunos para cada módulo
+    for module in modules:
+        cursor.execute('SELECT COUNT(*) as count FROM Enrollments WHERE module_id = ?', (module['id'],))
+        module['student_count'] = cursor.fetchone()['count']
+    
+    conn.close()
+    return jsonify(modules)
 
 @app.route('/professor/module/<int:module_id>')
 @role_required(['professor'])
@@ -422,8 +598,8 @@ def api_users():
                 data['full_name'],
                 data['email']
             ))
-    conn.commit()
-    conn.close()
+            conn.commit()
+            conn.close()
             return jsonify({'message': 'Usuário criado com sucesso!'}), 201
         except sqlite3.IntegrityError as e:
             conn.close()
@@ -465,7 +641,7 @@ def api_user(user_id):
             conn.close()
             return jsonify({'message': 'Usuário atualizado com sucesso!'})
         except sqlite3.IntegrityError:
-        conn.close()
+            conn.close()
             return jsonify({'error': 'Usuário ou email já existe.'}), 400
     
     elif request.method == 'DELETE':
@@ -494,7 +670,7 @@ def api_periods():
     elif request.method == 'POST':
         data = request.get_json()
         try:
-    cursor.execute('''
+            cursor.execute('''
                 INSERT INTO AcademicPeriods (name, coordinator_id, start_date, end_date, is_active) 
                 VALUES (?, ?, ?, ?, ?)
             ''', (
@@ -508,7 +684,7 @@ def api_periods():
             conn.close()
             return jsonify({'message': 'Período acadêmico criado com sucesso!'}), 201
         except sqlite3.IntegrityError:
-    conn.close()
+            conn.close()
             return jsonify({'error': 'Nome do período já existe.'}), 400
 
 # API do Coordenador
@@ -564,7 +740,7 @@ def api_period_students(period_id):
             conn.close()
             return jsonify({'message': 'Estudante criado com sucesso!'}), 201
         except sqlite3.IntegrityError:
-    conn.close()
+            conn.close()
             return jsonify({'error': 'Número de matrícula já existe.'}), 400
 
 # API do Professor
@@ -628,7 +804,7 @@ def api_update_grades(enrollment_id):
         WHERE e.id = ? AND m.professor_id = ?
     ''', (enrollment_id, user_id))
     if not cursor.fetchone():
-    conn.close()
+        conn.close()
         return jsonify({'error': 'Acesso negado.'}), 403
 
     data = request.get_json()
@@ -662,10 +838,64 @@ def api_update_grades(enrollment_id):
             data['absences']
         ))
     
-        conn.commit()
+    conn.commit()
     conn.close()
 
     return jsonify({'message': 'Notas atualizadas com sucesso!'})
+
+@app.route('/api/professor/students/<int:student_id>/absences', methods=['GET', 'PUT'])
+@role_required(['professor'])
+def api_professor_absences(student_id):
+    """API para professores visualizarem e atualizarem faltas de um aluno"""
+    user_id = session.get('user_id')
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    # Verificar se o professor tem acesso a este aluno
+    cursor.execute('''
+        SELECT s.* FROM Students s 
+        JOIN Enrollments e ON s.id = e.student_id
+        JOIN Modules m ON e.module_id = m.id
+        WHERE s.id = ? AND m.professor_id = ?
+    ''', (student_id, user_id))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Acesso negado.'}), 403
+
+    if request.method == 'GET':
+        # Buscar faltas do aluno nos módulos do professor
+        cursor.execute('''
+            SELECT AVG(g.absences) as avg_absences, MAX(g.absences) as max_absences
+            FROM Grades g
+            JOIN Enrollments e ON g.enrollment_id = e.id
+            JOIN Modules m ON e.module_id = m.id
+            WHERE e.student_id = ? AND m.professor_id = ?
+        ''', (student_id, user_id))
+        result = cursor.fetchone()
+        conn.close()
+        
+        return jsonify({
+            'absences': int(result['avg_absences'] or 0),
+            'max_absences': int(result['max_absences'] or 0)
+        })
+    
+    elif request.method == 'PUT':
+        data = request.get_json()
+        
+        # Atualizar faltas em todas as matrículas do aluno nos módulos do professor
+        cursor.execute('''
+            UPDATE Grades SET absences = ?, last_updated = CURRENT_TIMESTAMP
+            WHERE enrollment_id IN (
+                SELECT e.id FROM Enrollments e
+                JOIN Modules m ON e.module_id = m.id
+                WHERE e.student_id = ? AND m.professor_id = ?
+            )
+        ''', (data['absences'], student_id, user_id))
+        
+        conn.commit()
+        conn.close()
+
+        return jsonify({'message': 'Faltas atualizadas com sucesso!'})
 
 @app.errorhandler(404)
 def not_found(error):
@@ -674,6 +904,11 @@ def not_found(error):
 @app.errorhandler(403)
 def forbidden(error):
     return render_template('errors/403.html'), 403
+
+@app.route('/test/professors')
+def test_professors_page():
+    """Página de teste para verificar a API de professores"""
+    return render_template('test_professors.html')
 
 @app.route('/api/coordinators')
 @role_required(['admin'])
@@ -685,6 +920,338 @@ def api_coordinators():
     coordinators = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(coordinators)
+
+# API para o coordenador adicionar módulos
+@app.route('/api/coordinator/periods/<int:period_id>/modules', methods=['GET', 'POST'])
+@role_required(['coordinator'])
+def api_coordinator_modules(period_id):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    # Verificar se o coordenador tem acesso a este período
+    user_id = session.get('user_id')
+    cursor.execute('SELECT * FROM AcademicPeriods WHERE id = ? AND coordinator_id = ?', (period_id, user_id))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Acesso negado.'}), 403
+    
+    if request.method == 'GET':
+        cursor.execute('''
+            SELECT m.*, u.full_name as professor_name 
+            FROM Modules m 
+            JOIN Users u ON m.professor_id = u.id 
+            WHERE m.academic_period_id = ? 
+            ORDER BY m.name
+        ''', (period_id,))
+        modules = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(modules)
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        try:
+            cursor.execute('''
+                INSERT INTO Modules (name, code, professor_id, academic_period_id, credits, max_absences) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                data['name'],
+                data['code'],
+                data['professor_id'],
+                period_id,
+                data.get('credits', 4),
+                data.get('max_absences', 10)
+            ))
+            conn.commit()
+            conn.close()
+            return jsonify({'message': 'Módulo criado com sucesso!'}), 201
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Código do módulo já existe neste período.'}), 400
+
+# API para o coordenador editar informações dos alunos
+@app.route('/api/coordinator/students/<int:student_id>', methods=['PUT', 'DELETE'])
+@role_required(['coordinator'])
+def api_coordinator_edit_student(student_id):
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    # Verificar se o coordenador tem acesso a este aluno
+    user_id = session.get('user_id')
+    cursor.execute('''
+        SELECT s.* FROM Students s 
+        JOIN AcademicPeriods ap ON s.academic_period_id = ap.id 
+        WHERE s.id = ? AND ap.coordinator_id = ?
+    ''', (student_id, user_id))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Acesso negado.'}), 403
+    
+    if request.method == 'PUT':
+        data = request.get_json()
+        try:
+            cursor.execute('''
+                UPDATE Students SET 
+                    student_number=?, full_name=?, email=?, enrollment_date=?, 
+                    medical_certificates=?, referral_info=?, observations=?
+                WHERE id=?
+            ''', (
+                data['student_number'],
+                data['full_name'],
+                data.get('email', ''),
+                data['enrollment_date'],
+                data.get('medical_certificates', 0),
+                data.get('referral_info', ''),
+                data.get('observations', ''),
+                student_id
+            ))
+            conn.commit()
+            conn.close()
+            return jsonify({'message': 'Informações do estudante atualizadas com sucesso!'})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Número de matrícula já existe.'}), 400
+    
+    elif request.method == 'DELETE':
+        try:
+            cursor.execute('DELETE FROM Students WHERE id = ?', (student_id,))
+            conn.commit()
+            conn.close()
+            return jsonify({'message': 'Estudante excluído com sucesso!'})
+        except sqlite3.Error as e:
+            conn.close()
+            return jsonify({'error': 'Erro ao excluir estudante.'}), 500
+
+# API para buscar professores disponíveis
+@app.route('/api/coordinator/professors')
+@role_required(['coordinator'])
+def api_coordinator_professors():
+    """API para buscar professores disponíveis"""
+    print(f"API chamada por usuário: {session.get('user_id')}, role: {session.get('user_role')}")  # Debug log
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, full_name FROM Users WHERE role = "professor" ORDER BY full_name')
+    professors = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    print(f"Professores encontrados: {professors}")  # Debug log
+    return jsonify(professors)
+
+# API para professores gerenciarem alunos
+@app.route('/api/professor/students', methods=['GET', 'POST'])
+@role_required(['professor'])
+def api_professor_students():
+    """API para professores gerenciarem alunos"""
+    user_id = session.get('user_id')
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        # Buscar alunos dos módulos do professor
+        cursor.execute('''
+            SELECT DISTINCT s.*, ap.name as period_name
+            FROM Students s 
+            JOIN AcademicPeriods ap ON s.academic_period_id = ap.id
+            JOIN Enrollments e ON s.id = e.student_id
+            JOIN Modules m ON e.module_id = m.id
+            WHERE m.professor_id = ?
+            ORDER BY s.full_name
+        ''', (user_id,))
+        students = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(students)
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        print(f"[DEBUG] Dados recebidos para criação de aluno: {data}")  # Debug log
+        try:
+            # Verificar se o período existe e está ativo
+            cursor.execute('SELECT id FROM AcademicPeriods WHERE id = ? AND is_active = 1', (data['academic_period_id'],))
+            period_check = cursor.fetchone()
+            print(f"[DEBUG] Verificação de período - ID: {data['academic_period_id']}, Encontrado: {period_check}")  # Debug log
+            if not period_check:
+                conn.close()
+                return jsonify({'error': 'Período acadêmico não encontrado ou inativo.'}), 400
+            
+            # Inserir novo aluno
+            cursor.execute('''
+                INSERT INTO Students (student_number, full_name, email, academic_period_id, enrollment_date, medical_certificates, referral_info, observations) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data['student_number'],
+                data['full_name'],
+                data.get('email', ''),
+                data['academic_period_id'],
+                data['enrollment_date'],
+                data.get('medical_certificates', 0),
+                data.get('referral_info', ''),
+                data.get('observations', '')
+            ))
+            
+            student_id = cursor.lastrowid
+            print(f"[DEBUG] Aluno criado com ID: {student_id}")  # Debug log
+            
+            # Matricular o aluno nos módulos do professor (se existirem)
+            cursor.execute('SELECT id FROM Modules WHERE professor_id = ? AND academic_period_id = ?', (user_id, data['academic_period_id']))
+            modules = cursor.fetchall()
+            print(f"[DEBUG] Módulos encontrados para matricular: {modules}")  # Debug log
+            
+            if modules:
+                for module in modules:
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO Enrollments (student_id, module_id) 
+                        VALUES (?, ?)
+                    ''', (student_id, module['id']))
+                    
+                    # Buscar o ID da matrícula criada
+                    cursor.execute('SELECT id FROM Enrollments WHERE student_id = ? AND module_id = ?', (student_id, module['id']))
+                    enrollment = cursor.fetchone()
+                    
+                    if enrollment:
+                        # Criar registro de notas vazio
+                        cursor.execute('''
+                            INSERT OR IGNORE INTO Grades (enrollment_id, tutor_grade, regular_exam_grade, makeup_exam_grade, final_grade, absences) 
+                            VALUES (?, 0.0, 0.0, 0.0, 0.0, 0)
+                        ''', (enrollment['id'],))
+            else:
+                print(f"[DEBUG] Nenhum módulo encontrado para o professor {user_id} no período {data['academic_period_id']}")  # Debug log
+            
+            conn.commit()
+            print(f"[DEBUG] Transação commitada com sucesso!")  # Debug log
+            conn.close()
+            
+            if modules:
+                return jsonify({'message': f'Aluno criado e matriculado em {len(modules)} módulo(s) com sucesso!'}), 201
+            else:
+                return jsonify({'message': 'Aluno criado com sucesso! (Ainda não há módulos para matricular)'}), 201
+        except sqlite3.IntegrityError as e:
+            print(f"[DEBUG] Erro de integridade: {e}")  # Debug log
+            conn.close()
+            return jsonify({'error': 'Número de matrícula já existe.'}), 400
+        except Exception as e:
+            print(f"[DEBUG] Erro inesperado: {e}")  # Debug log
+            conn.close()
+            return jsonify({'error': f'Erro interno: {str(e)}'}), 500
+
+@app.route('/api/professor/students/<int:student_id>', methods=['GET', 'PUT'])
+@role_required(['professor'])
+def api_professor_student_detail(student_id):
+    """API para professores visualizarem e editarem informações dos alunos"""
+    user_id = session.get('user_id')
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    # Verificar se o professor tem acesso a este aluno
+    cursor.execute('''
+        SELECT s.* FROM Students s 
+        JOIN Enrollments e ON s.id = e.student_id
+        JOIN Modules m ON e.module_id = m.id
+        WHERE s.id = ? AND m.professor_id = ?
+    ''', (student_id, user_id))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Acesso negado.'}), 403
+    
+    if request.method == 'GET':
+        # Buscar dados completos do aluno
+        cursor.execute('''
+            SELECT s.*, ap.name as period_name
+            FROM Students s 
+            JOIN AcademicPeriods ap ON s.academic_period_id = ap.id
+            WHERE s.id = ?
+        ''', (student_id,))
+        student = dict(cursor.fetchone())
+        conn.close()
+        return jsonify(student)
+    
+    elif request.method == 'PUT':
+        data = request.get_json()
+        try:
+            cursor.execute('''
+                UPDATE Students SET 
+                    student_number=?, full_name=?, email=?, enrollment_date=?, 
+                    medical_certificates=?, referral_info=?, observations=?
+                WHERE id=?
+            ''', (
+                data['student_number'],
+                data['full_name'],
+                data.get('email', ''),
+                data['enrollment_date'],
+                data.get('medical_certificates', 0),
+                data.get('referral_info', ''),
+                data.get('observations', ''),
+                student_id
+            ))
+            conn.commit()
+            conn.close()
+            return jsonify({'message': 'Informações do aluno atualizadas com sucesso!'})
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Número de matrícula já existe.'}), 400
+
+@app.route('/api/professor/periods')
+@role_required(['professor'])
+def api_professor_periods():
+    """API para professores buscarem períodos disponíveis"""
+    user_id = session.get('user_id')
+    print(f"[DEBUG] Buscando períodos para professor ID: {user_id}")  # Debug log
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT DISTINCT ap.* FROM AcademicPeriods ap
+        JOIN Modules m ON ap.id = m.academic_period_id
+        WHERE m.professor_id = ? AND ap.is_active = 1
+        ORDER BY ap.name
+    ''', (user_id,))
+    periods = [dict(row) for row in cursor.fetchall()]
+    print(f"[DEBUG] Períodos encontrados: {periods}")  # Debug log
+    conn.close()
+    
+    return jsonify(periods)
+
+# API alternativa para períodos (mais permissiva)
+@app.route('/api/periods')
+@login_required
+def api_periods_alternative():
+    """API para buscar todos os períodos ativos (mais permissiva)"""
+    print(f"[DEBUG] API alternativa de períodos chamada por usuário: {session.get('user_id')}")  # Debug log
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM AcademicPeriods WHERE is_active = 1 ORDER BY name')
+    periods = [dict(row) for row in cursor.fetchall()]
+    print(f"[DEBUG] Todos os períodos ativos encontrados: {periods}")  # Debug log
+    conn.close()
+    
+    return jsonify(periods)
+
+# API alternativa para professores (mais permissiva)
+@app.route('/api/professors')
+def api_professors():
+    """API para buscar professores (sem restrição de role)"""
+    print(f"API alternativa chamada por usuário: {session.get('user_id')}, role: {session.get('user_role')}")  # Debug log
+    try:
+        conn = conectar_bd()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, full_name FROM Users WHERE role = "professor" ORDER BY full_name')
+        professors = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        print(f"Professores encontrados (API alternativa): {professors}")  # Debug log
+        return jsonify(professors)
+    except Exception as e:
+        print(f"Erro na API de professores: {e}")  # Debug log
+        return jsonify({'error': str(e)}), 500
+
+# API temporária para teste (sem autenticação)
+@app.route('/api/test/professors')
+def api_test_professors():
+    """API temporária para teste de professores"""
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, full_name FROM Users WHERE role = "professor" ORDER BY full_name')
+    professors = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    print(f"API de teste - Professores encontrados: {professors}")  # Debug log
+    return jsonify(professors)
 
 if __name__ == '__main__':
     inicializar_bd()

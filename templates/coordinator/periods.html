@@ -87,9 +87,11 @@
                 <div class="tab-pane fade" id="modules-pane">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="mb-0">Módulos</h4>
-                        <button class="btn btn-primary" onclick="showCreateModuleModal()">
-                            <i class="bi bi-book-plus me-1"></i>Novo Módulo
-                        </button>
+                        <div>
+                            <a href="#" onclick="goToModules()" class="btn btn-primary">
+                                <i class="bi bi-gear me-1"></i>Gerenciar Módulos
+                            </a>
+                        </div>
                     </div>
                     
                     <div class="table-container">
@@ -101,12 +103,12 @@
                                     <th>Professor</th>
                                     <th>Créditos</th>
                                     <th>Max. Faltas</th>
-                                    <th width="100">Ações</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody id="modulesTableBody">
                                 <tr>
-                                    <td colspan="6" class="text-center py-3">Selecione um período para ver os módulos</td>
+                                    <td colspan="6" class="text-center py-3">Carregando módulos...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -131,52 +133,53 @@
     </div>
 </div>
 
-<!-- Create Student Modal -->
+<!-- Create/Edit Student Modal -->
 <div class="modal fade" id="studentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Novo Estudante</h5>
+                <h5 class="modal-title" id="studentModalTitle">Novo Estudante</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="studentForm">
-                    <div class="form-group">
-                        <label for="studentNumber" class="form-label">Número de Matrícula</label>
+                    <input type="hidden" id="studentId">
+                    <div class="form-group mb-3">
+                        <label for="studentNumber" class="form-label">Número de Matrícula *</label>
                         <input type="text" class="form-control" id="studentNumber" required
                                placeholder="Ex: 20241001">
                     </div>
                     
-                    <div class="form-group">
-                        <label for="studentName" class="form-label">Nome Completo</label>
+                    <div class="form-group mb-3">
+                        <label for="studentName" class="form-label">Nome Completo *</label>
                         <input type="text" class="form-control" id="studentName" required
                                placeholder="Nome completo do estudante">
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="studentEmail" class="form-label">Email</label>
                         <input type="email" class="form-control" id="studentEmail"
                                placeholder="email@exemplo.com">
                     </div>
                     
-                    <div class="form-group">
-                        <label for="enrollmentDate" class="form-label">Data de Matrícula</label>
+                    <div class="form-group mb-3">
+                        <label for="enrollmentDate" class="form-label">Data de Matrícula *</label>
                         <input type="date" class="form-control" id="enrollmentDate" required>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="medicalCertificates" class="form-label">Atestados Médicos</label>
                         <input type="number" class="form-control" id="medicalCertificates" 
                                min="0" value="0">
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="referralInfo" class="form-label">Informações de Encaminhamento</label>
                         <input type="text" class="form-control" id="referralInfo"
                                placeholder="Informações sobre encaminhamento">
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="observations" class="form-label">Observações</label>
                         <textarea class="form-control" id="observations" rows="3"
                                   placeholder="Observações sobre o estudante"></textarea>
@@ -192,6 +195,25 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este estudante? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteStudent()">Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -200,6 +222,7 @@ let currentPeriodId = null;
 let periods = [];
 let students = [];
 let modules = [];
+let studentToDelete = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     loadPeriods();
@@ -261,6 +284,7 @@ function selectPeriod(periodId, periodName) {
     document.getElementById('periodManagement').style.display = 'block';
     
     loadStudents();
+    loadModules();
 }
 
 function backToPeriods() {
@@ -328,7 +352,9 @@ function showCreateStudentModal() {
         return;
     }
     
+    document.getElementById('studentModalTitle').textContent = 'Novo Estudante';
     document.getElementById('studentForm').reset();
+    document.getElementById('studentId').value = '';
     document.getElementById('enrollmentDate').value = new Date().toISOString().split('T')[0];
     clearMessage('studentModalMessage');
     
@@ -343,6 +369,7 @@ async function saveStudent() {
         return;
     }
     
+    const studentId = document.getElementById('studentId').value;
     const studentData = {
         student_number: document.getElementById('studentNumber').value,
         full_name: document.getElementById('studentName').value,
@@ -354,8 +381,14 @@ async function saveStudent() {
     };
     
     try {
-        const response = await fetch(`/api/periods/${currentPeriodId}/students`, {
-            method: 'POST',
+        const url = studentId ? 
+            `/api/coordinator/students/${studentId}` : 
+            `/api/periods/${currentPeriodId}/students`;
+        
+        const method = studentId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -414,17 +447,111 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString('pt-BR');
 }
 
-// Placeholder functions for future implementation
-function editStudent(studentId) {
-    showMessage('Funcionalidade de edição será implementada em breve!', 'info');
+// Carregar módulos do período
+async function loadModules() {
+    if (!currentPeriodId) return;
+    
+    try {
+        const response = await fetch(`/api/coordinator/periods/${currentPeriodId}/modules`);
+        modules = await response.json();
+        renderModulesTable();
+    } catch (error) {
+        console.error('Erro ao carregar módulos:', error);
+        showMessage('Erro ao carregar módulos', 'danger');
+    }
 }
 
+function renderModulesTable() {
+    const tbody = document.getElementById('modulesTableBody');
+    
+    if (modules.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-3">
+                    <i class="bi bi-book" style="font-size: 1.5rem; color: var(--color-gray-400);"></i>
+                    <div class="mt-1">Nenhum módulo cadastrado</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = modules.map(module => `
+        <tr>
+            <td><strong>${module.code}</strong></td>
+            <td>${module.name}</td>
+            <td>${module.professor_name}</td>
+            <td>${module.credits}</td>
+            <td>${module.max_absences}</td>
+            <td>
+                <span class="badge ${module.is_active ? 'bg-success' : 'bg-secondary'}">
+                    ${module.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Editar estudante
+async function editStudent(studentId) {
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+        showMessage('Estudante não encontrado', 'danger');
+        return;
+    }
+    
+    document.getElementById('studentModalTitle').textContent = 'Editar Estudante';
+    document.getElementById('studentId').value = student.id;
+    document.getElementById('studentNumber').value = student.student_number;
+    document.getElementById('studentName').value = student.full_name;
+    document.getElementById('studentEmail').value = student.email || '';
+    document.getElementById('enrollmentDate').value = student.enrollment_date;
+    document.getElementById('medicalCertificates').value = student.medical_certificates || 0;
+    document.getElementById('referralInfo').value = student.referral_info || '';
+    document.getElementById('observations').value = student.observations || '';
+    
+    clearMessage('studentModalMessage');
+    
+    const modal = new bootstrap.Modal(document.getElementById('studentModal'));
+    modal.show();
+}
+
+// Excluir estudante
 function deleteStudent(studentId) {
-    showMessage('Funcionalidade de exclusão será implementada em breve!', 'info');
+    studentToDelete = studentId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
 }
 
-function showCreateModuleModal() {
-    showMessage('Funcionalidade de criação de módulos será implementada em breve!', 'info');
+async function confirmDeleteStudent() {
+    if (!studentToDelete) return;
+    
+    try {
+        const response = await fetch(`/api/coordinator/students/${studentToDelete}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showMessage('Estudante excluído com sucesso!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+            loadStudents();
+        } else {
+            const result = await response.json();
+            showMessage(result.error || 'Erro ao excluir estudante', 'danger');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir estudante:', error);
+        showMessage('Erro ao excluir estudante', 'danger');
+    }
+    
+    studentToDelete = null;
+}
+
+// Navegar para a página de gerenciamento de módulos
+function goToModules() {
+    if (currentPeriodId) {
+        window.location.href = `/coordinator/period/${currentPeriodId}/modules`;
+    }
 }
 </script>
 {% endblock %}

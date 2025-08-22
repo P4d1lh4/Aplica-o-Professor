@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API Professores</title>
+</head>
+<body>
+    <h1>Teste da API de Professores</h1>
+    
+    <button onclick="testAPI()">Testar API</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        function testAPI() {
+            console.log('Testando API...');
+            
+            // Testar API com autenticação
+            fetch('/api/coordinator/professors')
+                .then(response => {
+                    console.log('Response status (coordinator):', response.status);
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                })
+                .then(data => {
+                    console.log('Dados (coordinator):', data);
+                    document.getElementById('result').innerHTML = `
+                        <h3>API com autenticação (coordinator):</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Erro (coordinator):', error);
+                    document.getElementById('result').innerHTML = `
+                        <h3>Erro na API com autenticação:</h3>
+                        <p style="color: red;">${error.message}</p>
+                    `;
+                });
+            
+            // Testar API sem autenticação
+            fetch('/api/test/professors')
+                .then(response => {
+                    console.log('Response status (test):', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Dados (test):', data);
+                    document.getElementById('result').innerHTML += `
+                        <h3>API sem autenticação (test):</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Erro (test):', error);
+                    document.getElementById('result').innerHTML += `
+                        <h3>Erro na API sem autenticação:</h3>
+                        <p style="color: red;">${error.message}</p>
+                    `;
+                });
+        }
+    </script>
+</body>
+</html>
